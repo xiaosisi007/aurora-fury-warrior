@@ -2607,7 +2607,7 @@ if Aurora.Macro then
             text = Aurora.texture(34428, 14) .. " 使用胜利在望",
             key = "fury.useVictoryRush",
             default = true,
-            tooltip = "自动使用胜利在望来恢复生命值\n\n效果:\n• 立即恢复30%最大生命值\n• 需要击杀敌人后触发\n• 优先级高于狂暴回复\n\n推荐: 开启，重要的保命技能",
+            tooltip = "自动使用胜利在望来恢复生命值",
             onChange = function(self, checked)
                 cfg.useVictoryRush = checked
                 print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
@@ -2620,7 +2620,7 @@ if Aurora.Macro then
             min = 0,
             max = 100,
             step = 5,
-            tooltip = "当生命值低于此百分比时自动使用胜利在望\n\n建议:\n• 40%: 标准设置（推荐）\n• 50%: 保守，更安全\n• 30%: 激进，节省技能\n• 60%: 极度保守\n\n注意: 需要击杀敌人后才能使用",
+            tooltip = "当生命值低于此百分比时自动使用胜利在望",
             onChange = function(self, value)
                 cfg.victoryRushThreshold = value
                 print("|cff00ff00[TT狂战]|r 胜利在望阈值设置为: " .. value .. "%")
