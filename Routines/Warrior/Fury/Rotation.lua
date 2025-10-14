@@ -4072,4 +4072,4 @@ C_Timer.After(2.5, function()
     end
 end)
 
-return MythicWarrior xiao gu o
+return MythicWarrior
