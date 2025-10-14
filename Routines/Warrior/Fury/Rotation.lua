@@ -55,6 +55,8 @@ if Aurora and Aurora.Config then
     -- 辅助技能
     Aurora.Config:SetDefault("fury.useEnragingRegeneration", true)
     Aurora.Config:SetDefault("fury.enragingRegenerationThreshold", 45)
+    Aurora.Config:SetDefault("fury.useVictoryRush", true)
+    Aurora.Config:SetDefault("fury.victoryRushThreshold", 40)
     
     -- 自动目标切换
     Aurora.Config:SetDefault("fury.autoTarget", true)  -- 自动目标切换开关
@@ -111,6 +113,8 @@ local cfg = setmetatable({}, {
         -- 辅助技能
         if key == "useEnragingRegeneration" then return GetConfig("useEnragingRegeneration", true) end
         if key == "enragingRegenerationThreshold" then return GetConfig("enragingRegenerationThreshold", 45) end
+        if key == "useVictoryRush" then return GetConfig("useVictoryRush", true) end
+        if key == "victoryRushThreshold" then return GetConfig("victoryRushThreshold", 40) end
         
         -- 自动目标切换
         if key == "autoTarget" then return GetConfig("autoTarget", true) end
@@ -1011,6 +1015,23 @@ S.Shockwave:callback(function(spell)
         lastInterruptTime = currentTime
     end
     return success
+end)
+
+-- 胜利在望（优先级高于狂暴回复，因为恢复更多）
+S.VictoryRush:callback(function(spell)
+    if not cfg.useVictoryRush then return false end
+    
+    -- 检查技能是否可用（需要击杀敌人后触发）
+    if not spell:ready() then return false end
+    
+    -- 血量检查
+    if player.healthpercent <= cfg.victoryRushThreshold then
+        if cfg.debug then
+            log(string.format("💚 胜利在望 - 血量: %d%% (阈值: %d%%)", 
+                math.floor(player.healthpercent), cfg.victoryRushThreshold))
+        end
+        return spell:cast(player)
+    end
 end)
 
 -- 狂暴回复
@@ -2454,6 +2475,45 @@ if Aurora.Macro then
     local gui = Aurora.GuiBuilder:New()
     
     gui:Category("屠戮狂战")
+        :Tab("简介")
+        :Header({ text = "欢迎使用屠戮狂战循环!" })
+        :Text({ text = "", size = 8 })
+        
+        :Text({
+            text = "1. 关于目标",
+            size = 26,
+            color = {r = 1, g = 1, b = 1, a = 1}
+        })
+        :Text({
+            text = "Modules -> Auto Target -> Auto Target -> Highest -> OnlyDead",
+            size = 24,
+            color = {r = 1, g = 1, b = 1, a = 1}
+        })
+        :Text({ text = "", size = 10 })
+        
+        :Text({
+            text = "2. 关于天赋",
+            size = 26,
+            color = {r = 1, g = 1, b = 1, a = 1}
+        })
+        :Text({
+            text = "目前只支持屠戮天赋",
+            size = 24,
+            color = {r = 1, g = 1, b = 1, a = 1}
+        })
+        :Text({ text = "", size = 10 })
+        
+        :Text({
+            text = "3. 关于技能插入",
+            size = 26,
+            color = {r = 1, g = 1, b = 1, a = 1}
+        })
+        :Text({
+            text = "我们就用Aurora原生的SmartQueue",
+            size = 24,
+            color = {r = 1, g = 1, b = 1, a = 1}
+        })
+    
         :Tab("药品/饰品")
         :Header({ text = "主动饰品" })
         :Checkbox({
@@ -2633,9 +2693,9 @@ if Aurora.Macro then
     
     -- 辅助技能标签页
     gui:Tab("辅助技能")
-        :Header({ text = Aurora.texture(184364, 16) .. " 狂暴回复" })
+        :Header({ text = Aurora.texture(184364, 16) .. " 防护技能" })
         :Checkbox({
-            text = "启用狂暴回复",
+            text = Aurora.texture(184364, 14) .. " 使用狂暴回复",
             key = "fury.enragingRegeneration.enabled",
             default = true,
             tooltip = "自动使用狂暴回复来恢复生命值",
@@ -2645,65 +2705,47 @@ if Aurora.Macro then
             end
         })
         :Slider({
-            text = "狂暴回复血量阈值 (%)",
+            text = "生命值阈值 (%)",
             key = "fury.enragingRegeneration.threshold",
+            default = 45,
             min = 0,
             max = 100,
             step = 5,
-            default = 45,
             tooltip = "当生命值低于此百分比时自动使用狂暴回复",
             onChange = function(self, value)
                 cfg.enragingRegenerationThreshold = value
                 print("|cff00ff00[屠戮狂战]|r 狂暴回复阈值设置为: " .. value .. "%")
             end
         })
-        :Header({ text = Aurora.texture(132223, 16) .. " 自动目标切换 " .. Aurora.texture(134400, 16) })
-        :Text({
-            text = "当目标不在近战范围时，自动切换到最近的敌人",
-            size = 11,
-            color = {r = 1, g = 0.82, b = 0, a = 1}
-        })
-        :Text({
-            text = "💡 快捷命令: /fury target (快速开关) | /fury target status (查看状态)",
-            size = 10,
-            color = {r = 0.5, g = 1, b = 0.5, a = 1}
-        })
-        :Text({ text = "", size = 3 })
+        
+        -- 胜利在望
         :Checkbox({
-            text = Aurora.texture(132223, 14) .. " 【启用自动目标切换】",
-            key = "fury.autoTarget",
+            text = Aurora.texture(34428, 14) .. " 使用胜利在望",
+            key = "fury.useVictoryRush",
             default = true,
-            tooltip = "当当前目标不在近战范围内时\n自动切换到近战范围内最近的敌人\n\n功能:\n• 目标死亡/不存在 → 自动选择新目标\n• 目标超出近战范围 → 切换到范围内最近的目标\n• 自动检测视线（LOS）\n• 避免切换到当前目标\n\n适用场景:\n• 怪物死亡后立即攻击下一个\n• 目标跑远后切换到近处的敌人\n• 多怪AOE时快速切换目标\n\n推荐: 开启，提升战斗效率",
+            tooltip = "自动使用胜利在望来恢复生命值\n\n效果:\n• 立即恢复30%最大生命值\n• 需要击杀敌人后触发\n• 优先级高于狂暴回复\n\n推荐: 开启，重要的保命技能",
             onChange = function(self, checked)
-                Aurora.Config:Write("fury.autoTarget", checked)
-                print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-                print("|cff00ff00[屠戮狂战]|r 自动目标切换已" .. (checked and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
-                if checked then
-                    print("|cff00ffff特点:|r")
-                    print("  • 目标不在近战范围时自动切换")
-                    print("  • 选择最近的可攻击敌人")
-                    print("  • 自动检测视线（LOS）")
-                end
-                print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+                cfg.useVictoryRush = checked
+                print("|cff00ff00[屠戮狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = "近战范围 (码)",
-            key = "fury.autoTargetRange",
-            min = 5,
-            max = 15,
-            step = 1,
-            default = 8,
-            tooltip = "自动目标切换的近战范围\n\n说明:\n• 5码: 最小近战范围\n• 8码: 标准近战范围（推荐）\n• 10码: 扩展近战范围\n• 12码: 大范围近战\n• 15码: 最大范围\n\n推荐: 8码（标准近战范围）\n\n注意:\n范围越大，切换越频繁\n范围越小，可能找不到目标",
+            text = "生命值阈值 (%)",
+            key = "fury.victoryRush.threshold",
+            default = 40,
+            min = 0,
+            max = 100,
+            step = 5,
+            tooltip = "当生命值低于此百分比时自动使用胜利在望\n\n建议:\n• 40%: 标准设置（推荐）\n• 50%: 保守，更安全\n• 30%: 激进，节省技能\n• 60%: 极度保守\n\n注意: 需要击杀敌人后才能使用",
             onChange = function(self, value)
-                Aurora.Config:Write("fury.autoTargetRange", value)
-                print("|cff00ff00[屠戮狂战]|r 自动目标切换范围设置为: " .. value .. "码")
+                cfg.victoryRushThreshold = value
+                print("|cff00ff00[屠戮狂战]|r 胜利在望阈值设置为: " .. value .. "%")
             end
         })
-        :Text({ text = "", size = 8 })
-        :Header({ text = Aurora.texture(444775, 16) .. " 掠武风暴范围提示" })
+        
+        -- 显示掠武风暴范围
         :Checkbox({
-            text = "显示攻击范围圆圈",
+            text = Aurora.texture(444775, 14) .. " 显示掠武风暴范围",
             key = "fury.whirlwind.showRange",
             default = true,
             tooltip = "战斗中在脚下显示5码范围圆圈\n帮助你站在怪物中间打出最高伤害",
@@ -2713,12 +2755,12 @@ if Aurora.Macro then
             end
         })
         :Slider({
-            text = "圆圈透明度",
+            text = "范围圆圈透明度",
             key = "fury.whirlwind.rangeOpacity",
+            default = 150,
             min = 50,
             max = 255,
             step = 10,
-            default = 150,
             tooltip = "调整圆圈的透明度\n数值越高越明显（50-255）",
             onChange = function(self, value)
                 cfg.whirlwindRangeOpacity = value
@@ -2726,103 +2768,93 @@ if Aurora.Macro then
             end
         })
     
-    -- 中断标签页
-    gui:Tab("中断")
-        :Header({ text = Aurora.texture(6552, 16) .. " 中断系统设置" })
-        :Checkbox({
-            text = "启用自动中断",
-            key = "fury.interrupt.enabled",
-            default = true,
-            tooltip = "总开关：启用/禁用所有中断技能",
-            onChange = function(self, checked)
-                cfg.useInterrupt = checked
-                print("|cff00ff00[屠戮狂战]|r 自动中断已" .. (checked and "启用" or "禁用"))
-            end
-        })
+    -- 打断标签页
+    gui:Tab("打断")
+        :Header({ text = Aurora.texture(6552, 16) .. " 打断系统设置" })
         :Checkbox({
             text = "使用 Aurora 列表",
             key = "fury.interrupt.withList",
             default = true,
-            tooltip = "启用：只中断列表中的技能\n禁用：中断所有可中断技能",
+            tooltip = "启用：只打断列表中的技能\n禁用：打断所有可打断技能\n\n💡 打断功能受Cooldown框架控制",
             onChange = function(self, checked)
                 cfg.interruptWithList = checked
                 local mode = checked and "仅列表" or "全部"
-                print("|cff00ff00[屠戮狂战]|r 列表中断模式: " .. mode)
+                print("|cff00ff00[屠戮狂战]|r 列表打断模式: " .. mode)
             end
         })
         :Slider({
-            text = "施法进度比较 (最小)",
+            text = "施法进度 (%)",
             key = "fury.interrupt.castPercent",
+            default = 30,
             min = 20,
             max = 80,
             step = 5,
-            default = 20,
             tooltip = "只有当施法进度到达此百分比才打断\n建议: 20-40%",
             onChange = function(self, value)
                 cfg.interruptCastPercent = value
                 print("|cff00ff00[屠戮狂战]|r 施法进度阈值设置为: " .. value .. "%")
             end
         })
-        :Text({ text = "", size = 3 })
-        :Header({ text = Aurora.texture(6552, 14) .. " 拳击" })
+        
+        -- 风暴之锤
         :Checkbox({
-            text = "使用拳击",
-            key = "fury.interrupt.pummel",
-            default = true,
-            tooltip = "启用/禁用拳击中断\n这是主要的中断技能，优先级最高",
-            onChange = function(self, checked)
-                cfg.usePummel = checked
-                print("|cff00ff00[屠戮狂战]|r 拳击已" .. (checked and "启用" or "禁用"))
-            end
-        })
-        :Text({ text = "", size = 3 })
-        :Header({ text = Aurora.texture(107570, 14) .. " 风暴之锤" })
-        :Checkbox({
-            text = "使用风暴之锤",
+            text = Aurora.texture(107570, 14) .. " 使用风暴之锤",
             key = "fury.interrupt.stormBolt",
             default = true,
-            tooltip = "启用/禁用风暴之锤中断\n当拳击CD时自动使用",
+            tooltip = "启用/禁用风暴之锤打断\n当拳击CD时自动使用",
             onChange = function(self, checked)
                 cfg.useStormBolt = checked
                 print("|cff00ff00[屠戮狂战]|r 风暴之锤已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = "风暴之锤敌人数",
+            text = "敌人数量阈值",
             key = "fury.interrupt.stormBoltEnemyCount",
+            default = 1,
             min = 1,
             max = 10,
             step = 1,
-            default = 1,
             tooltip = "当周围敌人数量 >= 此值时才使用风暴之锤\n建议: 1 (单体和群体都使用)",
             onChange = function(self, value)
                 cfg.stormBoltEnemyCount = value
                 print("|cff00ff00[屠戮狂战]|r 风暴之锤敌人数设置为: " .. value)
             end
         })
-        :Text({ text = "", size = 3 })
-        :Header({ text = Aurora.texture(46968, 14) .. " 震荡波" })
+        
+        -- 震荡波
         :Checkbox({
-            text = "使用震荡波",
+            text = Aurora.texture(46968, 14) .. " 使用震荡波",
             key = "fury.interrupt.shockwave",
             default = true,
-            tooltip = "启用/禁用震荡波中断\n当拳击和风暴之锤都CD时使用",
+            tooltip = "启用/禁用震荡波打断\n当拳击和风暴之锤都CD时使用",
             onChange = function(self, checked)
                 cfg.useShockwave = checked
                 print("|cff00ff00[屠戮狂战]|r 震荡波已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = "震荡波敌人数",
+            text = "敌人数量阈值",
             key = "fury.interrupt.shockwaveEnemyCount",
+            default = 3,
             min = 1,
             max = 10,
             step = 1,
-            default = 3,
             tooltip = "当周围敌人数量 >= 此值时才使用震荡波\n建议: 3 (多目标时使用)",
             onChange = function(self, value)
                 cfg.shockwaveEnemyCount = value
                 print("|cff00ff00[屠戮狂战]|r 震荡波敌人数设置为: " .. value)
+            end
+        })
+        
+        -- 拳击
+        :Checkbox({
+            text = Aurora.texture(6552, 14) .. " 使用拳击",
+            key = "fury.interrupt.pummel",
+            default = true,
+            tooltip = "启用/禁用拳击打断\n这是主要的打断技能，优先级最高",
+            onChange = function(self, checked)
+                cfg.usePummel = checked
+                print("|cff00ff00[屠戮狂战]|r 拳击已" .. (checked and "启用" or "禁用"))
             end
         })
     

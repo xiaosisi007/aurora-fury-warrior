@@ -38,6 +38,7 @@ Aurora.SpellHandler.PopulateSpellbook({
         
         -- 辅助技能
         EnragingRegeneration = NewSpell(184364),
+        VictoryRush = NewSpell(34428),  -- 胜利在望（回复30%生命值）
         BattleShout = NewSpell(6673),   -- 战斗怒吼（队友增益BUFF）
         
         -- 中断技能
