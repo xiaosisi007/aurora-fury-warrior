@@ -1,12 +1,12 @@
 --[[--------------------------------------------------------------------
-    屠戮狂战 · 技能回调接口
+    TT狂战 · 技能回调接口
 ----------------------------------------------------------------------]]
 
 local MythicWarrior = ...
 
 -- 获取玩家和技能书
 local player = Aurora.UnitManager:Get("player")
-local S = Aurora.SpellHandler.Spellbooks.warrior["2"].MythicWarrior.spells
+local S = Aurora.SpellHandler.Spellbooks.warrior["2"].TTFury.spells
 
 ------------------------------------------------------------------------
 -- 智能打断系统

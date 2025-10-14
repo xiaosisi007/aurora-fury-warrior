@@ -1,5 +1,5 @@
 --[[--------------------------------------------------------------------
-    屠戮狂战 · 技能书
+    TT狂战 · 技能书
 ----------------------------------------------------------------------]]
 
 local MythicWarrior = ...
@@ -99,6 +99,6 @@ Aurora.SpellHandler.PopulateSpellbook({
     talents = {
         -- 这里可以添加天赋ID，如果需要判断
     },
-}, "WARRIOR", 2, "MythicWarrior")
+}, "WARRIOR", 2, "TTFury")
 
 return MythicWarrior

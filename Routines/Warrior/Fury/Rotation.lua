@@ -9,11 +9,11 @@ if player then
         -- 不是狂怒战士，直接返回，不加载任何内容
         if isWarrior then
             -- 是战士但不是狂怒天赋
-            -- print("|cffffff00[屠戮狂战]|r 当前不是狂怒天赋 (Spec ID: " .. tostring(player.spec) .. ")，模块未加载")
+            -- print("|cffffff00[TT狂战]|r 当前不是狂怒天赋 (Spec ID: " .. tostring(player.spec) .. ")，模块未加载")
             -- print("|cffffff00[提示]|r 切换到狂怒天赋后 /reload 重新加载")
         else
             -- 不是战士职业
-            -- print("|cffffff00[屠戮狂战]|r 当前职业不是战士 (Class: " .. tostring(player.class2 or "未知") .. ")，模块未加载")
+            -- print("|cffffff00[TT狂战]|r 当前职业不是战士 (Class: " .. tostring(player.class2 or "未知") .. ")，模块未加载")
         end
         
         -- 直接返回，阻止后续所有代码执行
@@ -22,16 +22,16 @@ if player then
     end
     
     -- 通过检查，显示加载信息
-    -- print("|cff00ff00[屠戮狂战]|r 检测到狂怒战士，正在加载模块...")
+    -- print("|cff00ff00[TT狂战]|r 检测到狂怒战士，正在加载模块...")
 else
     -- player不存在时的兜底处理
-    -- print("|cffff0000[屠戮狂战]|r 无法检测玩家信息，模块加载中止")
+    -- print("|cffff0000[TT狂战]|r 无法检测玩家信息，模块加载中止")
     return MythicWarrior
 end
 
 -- 获取技能和光环
-local S = Aurora.SpellHandler.Spellbooks.warrior["2"].MythicWarrior.spells
-local A = Aurora.SpellHandler.Spellbooks.warrior["2"].MythicWarrior.auras
+local S = Aurora.SpellHandler.Spellbooks.warrior["2"].TTFury.spells
+local A = Aurora.SpellHandler.Spellbooks.warrior["2"].TTFury.auras
 local target = Aurora.UnitManager:Get("target")
 
 ------------------------------------------------------------------------
@@ -335,7 +335,7 @@ end
 
 local function log(msg)
     if cfg.debug then 
-        print("|cff00ff00[屠戮狂战]|r " .. tostring(msg)) 
+        print("|cff00ff00[TT狂战]|r " .. tostring(msg)) 
     end
 end
 
@@ -2434,9 +2434,9 @@ Aurora:RegisterRoutine(function()
     else
         Ooc()
     end
-end, "WARRIOR", 2, "MythicWarrior")
+end, "WARRIOR", 2, "TTFury")
 
--- print("|cff00ff00[屠戮狂战]|r 循环框架注册完成")
+-- print("|cff00ff00[TT狂战]|r 循环框架注册完成")
 
 ------------------------------------------------------------------------
 -- 注册宏命令（用于手动控制）
@@ -2445,9 +2445,9 @@ if Aurora.Macro then
     -- 初始化 GUI 配置界面
     local gui = Aurora.GuiBuilder:New()
     
-    gui:Category("屠戮狂战")
+    gui:Category("TT狂战")
         :Tab("简介")
-        :Header({ text = "欢迎使用屠戮狂战循环!" })
+        :Header({ text = "欢迎使用TT狂战循环!" })
         :Spacer()
         
         :Text({
@@ -2507,7 +2507,7 @@ if Aurora.Macro then
             onChange = function(self, checked)
                 cfg.useTrinket1 = checked
                 Aurora.Config:Write("fury.trinket1.enabled", checked)
-                print("|cff00ff00[屠戮狂战]|r 饰品1已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 饰品1已" .. (checked and "启用" or "禁用"))
             end
         })
         :Checkbox({
@@ -2518,7 +2518,7 @@ if Aurora.Macro then
             onChange = function(self, checked)
                 cfg.useTrinket2 = checked
                 Aurora.Config:Write("fury.trinket2.enabled", checked)
-                print("|cff00ff00[屠戮狂战]|r 饰品2已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 饰品2已" .. (checked and "启用" or "禁用"))
             end
         })
         :Checkbox({
@@ -2532,7 +2532,7 @@ if Aurora.Macro then
                 Aurora.Config:Write("fury.trinket1.withCooldowns", checked)
                 Aurora.Config:Write("fury.trinket2.withCooldowns", checked)
                 local mode = checked and "跟随爆发" or "CD好就用"
-                print("|cff00ff00[屠戮狂战]|r 饰品模式: " .. mode)
+                print("|cff00ff00[TT狂战]|r 饰品模式: " .. mode)
             end
         })
         :Text({ text = "", size = 8 })
@@ -2544,7 +2544,7 @@ if Aurora.Macro then
             tooltip = "自动使用治疗石恢复生命值",
             onChange = function(self, checked)
                 cfg.useHealthstone = checked
-                print("|cff00ff00[屠戮狂战]|r 治疗石已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 治疗石已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2557,7 +2557,7 @@ if Aurora.Macro then
             tooltip = "当生命值低于此百分比时自动使用治疗石",
             onChange = function(self, value)
                 cfg.healthstoneThreshold = value
-                print("|cff00ff00[屠戮狂战]|r 治疗石阈值设置为: " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 治疗石阈值设置为: " .. value .. "%")
             end
         })
         :Checkbox({
@@ -2567,7 +2567,7 @@ if Aurora.Macro then
             tooltip = "自动使用阿加治疗药水恢复生命值",
             onChange = function(self, checked)
                 cfg.useHealingPotion = checked
-                print("|cff00ff00[屠戮狂战]|r 治疗药水已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 治疗药水已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2580,7 +2580,7 @@ if Aurora.Macro then
             tooltip = "当生命值低于此百分比时自动使用阿加治疗药水\n按品质依次尝试: 史诗 > 稀有 > 优秀",
             onChange = function(self, value)
                 cfg.healingPotionThreshold = value
-                print("|cff00ff00[屠戮狂战]|r 治疗药水阈值设置为: " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 治疗药水阈值设置为: " .. value .. "%")
             end
         })
         :Checkbox({
@@ -2590,7 +2590,7 @@ if Aurora.Macro then
             tooltip = "自动使用爆发药水增强输出",
             onChange = function(self, checked)
                 cfg.useCombatPotion = checked
-                print("|cff00ff00[屠戮狂战]|r 爆发药水已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 爆发药水已" .. (checked and "启用" or "禁用"))
             end
         })
         :Checkbox({
@@ -2601,7 +2601,7 @@ if Aurora.Macro then
             onChange = function(self, checked)
                 cfg.combatPotionWithCooldowns = checked
                 local mode = checked and "跟随爆发技能" or "CD好就用"
-                print("|cff00ff00[屠戮狂战]|r 爆发药水模式: " .. mode)
+                print("|cff00ff00[TT狂战]|r 爆发药水模式: " .. mode)
             end
         })
     
@@ -2615,7 +2615,7 @@ if Aurora.Macro then
             tooltip = "自动使用狂暴回复来恢复生命值",
             onChange = function(self, checked)
                 cfg.useEnragingRegeneration = checked
-                print("|cff00ff00[屠戮狂战]|r 狂暴回复已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 狂暴回复已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2628,7 +2628,7 @@ if Aurora.Macro then
             tooltip = "当生命值低于此百分比时自动使用狂暴回复",
             onChange = function(self, value)
                 cfg.enragingRegenerationThreshold = value
-                print("|cff00ff00[屠戮狂战]|r 狂暴回复阈值设置为: " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 狂暴回复阈值设置为: " .. value .. "%")
             end
         })
         
@@ -2640,7 +2640,7 @@ if Aurora.Macro then
             tooltip = "自动使用胜利在望来恢复生命值\n\n效果:\n• 立即恢复30%最大生命值\n• 需要击杀敌人后触发\n• 优先级高于狂暴回复\n\n推荐: 开启，重要的保命技能",
             onChange = function(self, checked)
                 cfg.useVictoryRush = checked
-                print("|cff00ff00[屠戮狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2653,7 +2653,7 @@ if Aurora.Macro then
             tooltip = "当生命值低于此百分比时自动使用胜利在望\n\n建议:\n• 40%: 标准设置（推荐）\n• 50%: 保守，更安全\n• 30%: 激进，节省技能\n• 60%: 极度保守\n\n注意: 需要击杀敌人后才能使用",
             onChange = function(self, value)
                 cfg.victoryRushThreshold = value
-                print("|cff00ff00[屠戮狂战]|r 胜利在望阈值设置为: " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 胜利在望阈值设置为: " .. value .. "%")
             end
         })
         
@@ -2665,7 +2665,7 @@ if Aurora.Macro then
             tooltip = "战斗中在脚下显示5码范围圆圈\n帮助你站在怪物中间打出最高伤害",
             onChange = function(self, checked)
                 cfg.showWhirlwindRange = checked
-                print("|cff00ff00[屠戮狂战]|r 范围显示已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 范围显示已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2678,7 +2678,7 @@ if Aurora.Macro then
             tooltip = "调整圆圈的透明度\n数值越高越明显（50-255）",
             onChange = function(self, value)
                 cfg.whirlwindRangeOpacity = value
-                print("|cff00ff00[屠戮狂战]|r 圆圈透明度: " .. value)
+                print("|cff00ff00[TT狂战]|r 圆圈透明度: " .. value)
             end
         })
     
@@ -2693,7 +2693,7 @@ if Aurora.Macro then
             onChange = function(self, checked)
                 cfg.interruptWithList = checked
                 local mode = checked and "仅列表" or "全部"
-                print("|cff00ff00[屠戮狂战]|r 列表打断模式: " .. mode)
+                print("|cff00ff00[TT狂战]|r 列表打断模式: " .. mode)
             end
         })
         :Slider({
@@ -2706,7 +2706,7 @@ if Aurora.Macro then
             tooltip = "只有当施法进度到达此百分比才打断\n建议: 20-40%",
             onChange = function(self, value)
                 cfg.interruptCastPercent = value
-                print("|cff00ff00[屠戮狂战]|r 施法进度阈值设置为: " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 施法进度阈值设置为: " .. value .. "%")
             end
         })
         
@@ -2718,7 +2718,7 @@ if Aurora.Macro then
             tooltip = "启用/禁用风暴之锤打断\n• 单体打断：1个读条怪时，拳击CD后使用\n• 30秒CD，远程40码",
             onChange = function(self, checked)
                 cfg.useStormBolt = checked
-                print("|cff00ff00[屠戮狂战]|r 风暴之锤已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 风暴之锤已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2731,7 +2731,7 @@ if Aurora.Macro then
             tooltip = "当读条且可打断的怪物数量 >= 此值时才使用",
             onChange = function(self, value)
                 cfg.stormBoltEnemyCount = value
-                print("|cff00ff00[屠戮狂战]|r 风暴之锤读条怪数设置为: " .. value)
+                print("|cff00ff00[TT狂战]|r 风暴之锤读条怪数设置为: " .. value)
             end
         })
         
@@ -2743,7 +2743,7 @@ if Aurora.Macro then
             tooltip = "启用/禁用震荡波打断\n• 多目标打断：2个以上读条怪时优先使用\n• 单体兜底：拳击和风暴都CD时使用\n• 40秒CD，范围10码",
             onChange = function(self, checked)
                 cfg.useShockwave = checked
-                print("|cff00ff00[屠戮狂战]|r 震荡波已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 震荡波已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2756,7 +2756,7 @@ if Aurora.Macro then
             tooltip = "当读条且可打断的怪物数量 >= 此值时才使用",
             onChange = function(self, value)
                 cfg.shockwaveEnemyCount = value
-                print("|cff00ff00[屠戮狂战]|r 震荡波读条怪数设置为: " .. value)
+                print("|cff00ff00[TT狂战]|r 震荡波读条怪数设置为: " .. value)
             end
         })
         
@@ -2768,7 +2768,7 @@ if Aurora.Macro then
             tooltip = "启用/禁用拳击打断\n这是主要的打断技能，优先级最高",
             onChange = function(self, checked)
                 cfg.usePummel = checked
-                print("|cff00ff00[屠戮狂战]|r 拳击已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 拳击已" .. (checked and "启用" or "禁用"))
             end
         })
     
@@ -2782,7 +2782,7 @@ if Aurora.Macro then
             tooltip = "AOE小怪只剩1-2只时不使用爆发技能\n\n作用:\n- 避免在残血小怪上浪费大技能CD\n- 保留爆发留给Boss或下一波小怪\n\n适用场景:\n- 大秘境(M+)多波次小怪\n- 需要合理分配CD的战斗\n\n建议: 开启",
             onChange = function(self, checked)
                 cfg.reserveBurst = checked
-                -- print("|cff00ff00[屠戮狂战]|r 预留爆发已" .. (checked and "启用" or "禁用"))
+                -- print("|cff00ff00[TT狂战]|r 预留爆发已" .. (checked and "启用" or "禁用"))
             end
         })
         :Text({ text = "", size = 5 })
@@ -2794,7 +2794,7 @@ if Aurora.Macro then
             tooltip = "启用/禁用鲁莽技能\n冷却时间: 90秒\n效果: 大幅提升暴击率和伤害",
             onChange = function(self, checked)
                 cfg.useRecklessness = checked
-                print("|cff00ff00[屠戮狂战]|r 鲁莽已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 鲁莽已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2807,7 +2807,7 @@ if Aurora.Macro then
             tooltip = "目标预计存活时间 ≥ 此值才使用鲁莽\n避免在即将死亡的目标上浪费90秒CD\n建议: 10秒",
             onChange = function(self, value)
                 cfg.recklessnessTTD = value
-                print("|cff00ff00[屠戮狂战]|r 鲁莽 TTD 阈值: " .. value .. "秒")
+                print("|cff00ff00[TT狂战]|r 鲁莽 TTD 阈值: " .. value .. "秒")
             end
         })
         
@@ -2819,7 +2819,7 @@ if Aurora.Macro then
             tooltip = "启用/禁用天神下凡技能\n冷却时间: 90秒\n效果: 提升伤害和冷却恢复速度",
             onChange = function(self, checked)
                 cfg.useAvatar = checked
-                print("|cff00ff00[屠戮狂战]|r 天神下凡已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 天神下凡已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2832,7 +2832,7 @@ if Aurora.Macro then
             tooltip = "目标预计存活时间 ≥ 此值才使用天神下凡\n避免在即将死亡的目标上浪费90秒CD\n建议: 10秒",
             onChange = function(self, value)
                 cfg.avatarTTD = value
-                print("|cff00ff00[屠戮狂战]|r 天神下凡 TTD 阈值: " .. value .. "秒")
+                print("|cff00ff00[TT狂战]|r 天神下凡 TTD 阈值: " .. value .. "秒")
             end
         })
         
@@ -2844,7 +2844,7 @@ if Aurora.Macro then
             tooltip = "启用/禁用剑刃风暴技能\n冷却时间: 90秒\n效果: 强力 AOE 技能",
             onChange = function(self, checked)
                 cfg.useBladestorm = checked
-                print("|cff00ff00[屠戮狂战]|r 剑刃风暴已" .. (checked and "启用" or "禁用"))
+                print("|cff00ff00[TT狂战]|r 剑刃风暴已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
@@ -2857,7 +2857,7 @@ if Aurora.Macro then
             tooltip = "目标预计存活时间 ≥ 此值才使用剑刃风暴\n剑刃风暴持续4秒，建议至少8秒\n建议: 8秒",
             onChange = function(self, value)
                 cfg.bladestormTTD = value
-                print("|cff00ff00[屠戮狂战]|r 剑刃风暴 TTD 阈值: " .. value .. "秒")
+                print("|cff00ff00[TT狂战]|r 剑刃风暴 TTD 阈值: " .. value .. "秒")
             end
         })
     
@@ -2968,7 +2968,7 @@ if Aurora.Macro then
     cfg.useBladestorm = Aurora.Config:Read("fury.cooldowns.bladestorm")
     cfg.bladestormTTD = Aurora.Config:Read("fury.cooldowns.bladestormTTD")
     
-    -- print("|cff00ff00[屠戮狂战]|r GUI配置界面已加载")
+    -- print("|cff00ff00[TT狂战]|r GUI配置界面已加载")
     
     ------------------------------------------------------------------------
     -- 状态框架 - 中断技能切换按钮
@@ -2983,7 +2983,7 @@ if Aurora.Macro then
         onClick = function(value)
             cfg.useStormBolt = value
             Aurora.Config:Write("fury.interrupt.stormBolt", value)
-            -- print("|cff00ff00[屠戮狂战]|r 风暴之锤打断已" .. (value and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
+            -- print("|cff00ff00[TT狂战]|r 风暴之锤打断已" .. (value and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         end
     })
     
@@ -2996,7 +2996,7 @@ if Aurora.Macro then
         onClick = function(value)
             cfg.useShockwave = value
             Aurora.Config:Write("fury.interrupt.shockwave", value)
-            -- print("|cff00ff00[屠戮狂战]|r 震荡波打断已" .. (value and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
+            -- print("|cff00ff00[TT狂战]|r 震荡波打断已" .. (value and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         end
     })
     
@@ -3009,7 +3009,7 @@ if Aurora.Macro then
         onClick = function(value)
             cfg.useBattleShout = value
             Aurora.Config:Write("fury.battleshout.enabled", value)
-            -- print("|cff00ff00[屠戮狂战]|r 战斗怒吼已" .. (value and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
+            -- print("|cff00ff00[TT狂战]|r 战斗怒吼已" .. (value and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         end
     })
     
@@ -3026,7 +3026,7 @@ if Aurora.Macro then
         Aurora.Rotation.BattleShoutToggle:SetValue(cfg.useBattleShout)
     end
     
-    -- print("|cff00ff00[屠戮狂战]|r 状态框架切换按钮已创建:")
+    -- print("|cff00ff00[TT狂战]|r 状态框架切换按钮已创建:")
     -- print("  |cff00ffff风暴之锤|r - 快速切换风暴之锤打断")
     -- print("  |cff00ffff震荡波|r - 快速切换震荡波打断")
     -- print("  |cff00ffff战斗怒吼|r - 快速切换战斗怒吼BUFF")
@@ -3117,21 +3117,21 @@ if Aurora.Macro then
     -- 注册天赋显示命令
     Aurora.Macro:RegisterCommand("talent", ShowTalentPopup, "显示大米屠戮天赋代码")
     
-    -- print("|cff00ff00[屠戮狂战]|r 天赋配置弹窗已注册: |cff00ffff/slayer talent|r")
+    -- print("|cff00ff00[TT狂战]|r 天赋配置弹窗已注册: |cff00ffff/slayer talent|r")
     
     -- 切换爆发开关
     Aurora.Macro:RegisterCommand("cd", function(args)
         if args == "on" or args == "1" then
             cfg.manualCooldownsEnabled = true
-            print("|cff00ff00[屠戮狂战]|r 爆发技能已 |cff00ff00启用|r")
+            print("|cff00ff00[TT狂战]|r 爆发技能已 |cff00ff00启用|r")
         elseif args == "off" or args == "0" then
             cfg.manualCooldownsEnabled = false
-            print("|cffff0000[屠戮狂战]|r 爆发技能已 |cffff0000禁用|r")
+            print("|cffff0000[TT狂战]|r 爆发技能已 |cffff0000禁用|r")
         else
             -- 切换状态
             cfg.manualCooldownsEnabled = not cfg.manualCooldownsEnabled
             local status = cfg.manualCooldownsEnabled and "|cff00ff00启用|r" or "|cffff0000禁用|r"
-            print("|cff00ff00[屠戮狂战]|r 爆发技能已切换为: " .. status)
+            print("|cff00ff00[TT狂战]|r 爆发技能已切换为: " .. status)
         end
         -- 重置调试打印，以便下次战斗时显示新状态
         debugPrinted = false
@@ -3141,21 +3141,21 @@ if Aurora.Macro then
     Aurora.Macro:RegisterCommand("debug", function(args)
         if args == "on" or args == "1" then
             cfg.debug = true
-            print("|cff00ff00[屠戮狂战]|r 调试模式已 |cff00ff00启用|r")
+            print("|cff00ff00[TT狂战]|r 调试模式已 |cff00ff00启用|r")
         elseif args == "off" or args == "0" then
             cfg.debug = false
-            print("|cffff0000[屠戮狂战]|r 调试模式已 |cffff0000禁用|r")
+            print("|cffff0000[TT狂战]|r 调试模式已 |cffff0000禁用|r")
         else
             cfg.debug = not cfg.debug
             local status = cfg.debug and "|cff00ff00启用|r" or "|cffff0000禁用|r"
-            print("|cff00ff00[屠戮狂战]|r 调试模式已切换为: " .. status)
+            print("|cff00ff00[TT狂战]|r 调试模式已切换为: " .. status)
         end
         debugPrinted = false
     end, "切换调试模式 (on/off/toggle)")
     
     -- 显示当前状态
     Aurora.Macro:RegisterCommand("status", function()
-        print("|cffff00ff========== 屠戮狂战状态 ==========|r")
+        print("|cffff00ff========== TT狂战状态 ==========|r")
         
         -- 爆发技能状态
         if Aurora.Rotation and Aurora.Rotation.Cooldown then
@@ -3198,9 +3198,9 @@ if Aurora.Macro then
         local value = tonumber(threshold)
         if value and value >= 0 and value <= 100 then
             cfg.enragingRegenerationThreshold = value
-            print("|cff00ff00[屠戮狂战]|r 狂暴回复阈值设置为: |cff00ff00" .. value .. "%|r")
+            print("|cff00ff00[TT狂战]|r 狂暴回复阈值设置为: |cff00ff00" .. value .. "%|r")
         else
-            print("|cffff0000[屠戮狂战]|r 无效的阈值，请输入 0-100 之间的数字")
+            print("|cffff0000[TT狂战]|r 无效的阈值，请输入 0-100 之间的数字")
             print("当前阈值: " .. cfg.enragingRegenerationThreshold .. "%")
         end
     end, "设置狂暴回复血量阈值 (0-100)")
@@ -3209,14 +3209,14 @@ if Aurora.Macro then
     Aurora.Macro:RegisterCommand("int", function(args)
         if args == "on" or args == "1" then
             cfg.useInterrupt = true
-            print("|cff00ff00[屠戮狂战]|r 自动中断已 |cff00ff00启用|r")
+            print("|cff00ff00[TT狂战]|r 自动中断已 |cff00ff00启用|r")
         elseif args == "off" or args == "0" then
             cfg.useInterrupt = false
-            print("|cffff0000[屠戮狂战]|r 自动中断已 |cffff0000禁用|r")
+            print("|cffff0000[TT狂战]|r 自动中断已 |cffff0000禁用|r")
         else
             cfg.useInterrupt = not cfg.useInterrupt
             local status = cfg.useInterrupt and "|cff00ff00启用|r" or "|cffff0000禁用|r"
-            print("|cff00ff00[屠戮狂战]|r 自动中断已切换为: " .. status)
+            print("|cff00ff00[TT狂战]|r 自动中断已切换为: " .. status)
         end
     end, "切换自动中断 (on/off/toggle)")
     
@@ -3224,20 +3224,20 @@ if Aurora.Macro then
     Aurora.Macro:RegisterCommand("intlist", function(args)
         if args == "on" or args == "1" then
             cfg.interruptWithList = true
-            print("|cff00ff00[屠戮狂战]|r 列表中断已 |cff00ff00启用|r (仅中断列表中的技能)")
+            print("|cff00ff00[TT狂战]|r 列表中断已 |cff00ff00启用|r (仅中断列表中的技能)")
         elseif args == "off" or args == "0" then
             cfg.interruptWithList = false
-            print("|cffff0000[屠戮狂战]|r 列表中断已 |cffff0000禁用|r (中断所有可中断技能)")
+            print("|cffff0000[TT狂战]|r 列表中断已 |cffff0000禁用|r (中断所有可中断技能)")
         else
             cfg.interruptWithList = not cfg.interruptWithList
             local status = cfg.interruptWithList and "|cff00ff00启用|r (仅列表)" or "|cffff0000禁用|r (全部)"
-            print("|cff00ff00[屠戮狂战]|r 列表中断已切换为: " .. status)
+            print("|cff00ff00[TT狂战]|r 列表中断已切换为: " .. status)
         end
     end, "切换列表中断模式 (on/off/toggle)")
     
     -- 修复中断列表
     Aurora.Macro:RegisterCommand("intfix", function()
-        print("|cff00ff00[屠戮狂战]|r 尝试修复中断列表...")
+        print("|cff00ff00[TT狂战]|r 尝试修复中断列表...")
         
         -- 检查 Aurora.Lists 是否存在
         if not Aurora.Lists then
@@ -3588,7 +3588,7 @@ if Aurora.Macro then
         print("|cffff00ff===================================|r")
     end, "测试饰品系统")
     
-    -- print("|cff00ff00[屠戮狂战]|r 宏命令已注册:")
+    -- print("|cff00ff00[TT狂战]|r 宏命令已注册:")
     -- print("  |cff00ffff/aurora cd [on/off]|r - 切换爆发技能")
     -- print("  |cff00ffff/aurora debug [on/off]|r - 切换调试模式")
     -- print("  |cff00ffff/aurora status|r - 显示当前状态")
@@ -3758,7 +3758,7 @@ if Aurora.Draw then
     
     -- 启用绘制系统
     Draw:Enable()
-    -- print("|cff00ff00[屠戮狂战]|r 掠武风暴范围显示已加载（5码）")
+    -- print("|cff00ff00[TT狂战]|r 掠武风暴范围显示已加载（5码）")
 end
 
 ------------------------------------------------------------------------
@@ -3791,8 +3791,8 @@ specChangeFrame:SetScript("OnEvent", function(self, event)
             if isWarrior then
                 if newSpec == 2 then
                     -- 切换到狂怒天赋
-                    -- print("|cff00ff00[屠戮狂战]|r 检测到切换为狂怒天赋 (Spec: " .. newSpec .. ")")
-                    -- print("|cff00ff00[屠戮狂战]|r 正在自动重载以加载模块...")
+                    -- print("|cff00ff00[TT狂战]|r 检测到切换为狂怒天赋 (Spec: " .. newSpec .. ")")
+                    -- print("|cff00ff00[TT狂战]|r 正在自动重载以加载模块...")
                     C_Timer.After(0.1, function()
                         ReloadUI()
                     end)
@@ -3804,8 +3804,8 @@ specChangeFrame:SetScript("OnEvent", function(self, event)
                     -- elseif newSpec == 3 then
                     --     specName = "防护"
                     -- end
-                    -- print("|cffffff00[屠戮狂战]|r 检测到切换为" .. specName .. "天赋 (Spec: " .. newSpec .. ")")
-                    -- print("|cffffff00[屠戮狂战]|r 正在自动重载以卸载模块...")
+                    -- print("|cffffff00[TT狂战]|r 检测到切换为" .. specName .. "天赋 (Spec: " .. newSpec .. ")")
+                    -- print("|cffffff00[TT狂战]|r 正在自动重载以卸载模块...")
                     C_Timer.After(0.1, function()
                         ReloadUI()
                     end)
@@ -3818,7 +3818,7 @@ specChangeFrame:SetScript("OnEvent", function(self, event)
     end)
 end)
 
--- print("|cff00ff00[屠戮狂战]|r 专精变化热重载系统已启用")
+-- print("|cff00ff00[TT狂战]|r 专精变化热重载系统已启用")
 -- print("|cffffff00[提示]|r 切换天赋后将自动重载界面")
 
 ------------------------------------------------------------------------
@@ -3893,7 +3893,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
         Aurora.Config:Write("fury.autoTarget", newValue)
         
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-        print("|cff00ff00[屠戮狂战]|r 自动目标切换")
+        print("|cff00ff00[TT狂战]|r 自动目标切换")
         print(" ")
         if newValue then
             print("|cff00ff00✅ 已启用|r")
@@ -3926,7 +3926,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
         local range = Aurora.Config:Read("fury.autoTargetRange") or 8
         
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-        print("|cff00ff00[屠戮狂战]|r 自动目标切换状态")
+        print("|cff00ff00[TT狂战]|r 自动目标切换状态")
         print(" ")
         print("|cff00ffff状态:|r " .. (enabled and "|cff00ff00已启用 ✅|r" or "|cffff0000已禁用 ❌|r"))
         print("|cff00ffff范围:|r " .. range .. "码")
@@ -3949,7 +3949,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
             Aurora.Rotation.AutoTargetToggle:SetValue(true)
         end
         Aurora.Config:Write("fury.autoTarget", true)
-        print("|cff00ff00[屠戮狂战]|r 自动目标切换 |cff00ff00已启用 ✅|r")
+        print("|cff00ff00[TT狂战]|r 自动目标切换 |cff00ff00已启用 ✅|r")
         return
     end
     
@@ -3959,14 +3959,14 @@ SlashCmdList["FURYTARGET"] = function(msg)
             Aurora.Rotation.AutoTargetToggle:SetValue(false)
         end
         Aurora.Config:Write("fury.autoTarget", false)
-        print("|cff00ff00[屠戮狂战]|r 自动目标切换 |cffff0000已禁用 ❌|r")
+        print("|cff00ff00[TT狂战]|r 自动目标切换 |cffff0000已禁用 ❌|r")
         return
     end
     
     -- /fury help - 显示帮助
     if command == "help" or command == "帮助" or command == "" then
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-        print("|cff00ff00[屠戮狂战]|r 快捷命令帮助")
+        print("|cff00ff00[TT狂战]|r 快捷命令帮助")
         print(" ")
         print("|cff00ffff自动目标切换:|r")
         print("  |cff00ff00/fury target|r - 快速开关")
@@ -3981,7 +3981,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
     end
     
     -- 未知命令
-    print("|cffff0000[屠戮狂战]|r 未知命令: " .. msg)
+    print("|cffff0000[TT狂战]|r 未知命令: " .. msg)
     print("|cff00ffff输入 |cff00ff00/fury help|r 查看帮助")
 end
 
