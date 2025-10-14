@@ -70,7 +70,7 @@ if Aurora and Aurora.Config then
     -- 中断设置
     Aurora.Config:SetDefault("fury.useInterrupt", true)
     Aurora.Config:SetDefault("fury.interruptWithList", true)
-    Aurora.Config:SetDefault("fury.interruptCastPercent", 30)  -- 施法进度百分比阈值
+    Aurora.Config:SetDefault("fury.interruptCastPercent", 40)  -- 施法进度百分比阈值
     Aurora.Config:SetDefault("fury.usePummel", true)
     Aurora.Config:SetDefault("fury.useStormBolt", true)
     Aurora.Config:SetDefault("fury.stormBoltEnemyCount", 1)
@@ -139,7 +139,7 @@ local cfg = setmetatable({}, {
         -- 中断设置
         if key == "useInterrupt" then return GetConfig("useInterrupt", true) end
         if key == "interruptWithList" then return GetConfig("interruptWithList", true) end
-        if key == "interruptCastPercent" then return GetConfig("interruptCastPercent", 30) end
+        if key == "interruptCastPercent" then return GetConfig("interruptCastPercent", 40) end
         if key == "usePummel" then return GetConfig("usePummel", true) end
         if key == "useStormBolt" then return GetConfig("useStormBolt", true) end
         if key == "stormBoltEnemyCount" then return GetConfig("stormBoltEnemyCount", 1) end
@@ -164,133 +164,10 @@ local cfg = setmetatable({}, {
 -- 辅助函数
 ------------------------------------------------------------------------
 
--- 检查技能是否应该被中断（使用 Aurora 列表）
-local function ShouldInterruptSpell(spellId)
-    -- 如果不使用列表，中断所有
-    if not cfg.interruptWithList then
-        return true
-    end
-    
-    -- 检查列表是否存在
-    if not Aurora.Lists or not Aurora.Lists.InterruptSpells then
-        return true -- 列表不存在，安全起见中断所有
-    end
-    
-    -- 列表为空，中断所有
-    if #Aurora.Lists.InterruptSpells == 0 then
-        return true
-    end
-    
-    -- 检查 spellId 是否在列表中
-    if not spellId then
-        return false
-    end
-    
-    for _, interruptSpellId in ipairs(Aurora.Lists.InterruptSpells) do
-        if spellId == interruptSpellId then
-            return true
-        end
-    end
-    
-    return false -- 不在列表中
-end
-
--- 检查目标是否需要中断（按文档最佳实践）
-local function TargetNeedsInterrupt()
-    -- 按照文档示例：简洁的链式检查
-    -- 文档示例：if target.exists and target.casting then
-    if not target.exists then return false, nil end
-    if not target.alive then return false, nil end
-    if not target.enemy then return false, nil end
-    
-    -- 检查是否在施法（普通施法或引导）
-    local isCasting = target.casting
-    local isChanneling = target.channeling
-    if not isCasting and not isChanneling then return false, nil end
-    
-    -- 检查是否可中断
-    local isInterruptible = isCasting and target.castinginterruptible or target.channelinginterruptible
-    if not isInterruptible then return false, nil end
-    
-    -- 获取施法的技能ID
-    local spellId = isCasting and target.castingspellid or target.channelingspellid
-    
-    -- 列表检查（如果启用）
-    if not ShouldInterruptSpell(spellId) then
-        return false, spellId
-    end
-    
-    -- 施法进度检查（文档示例：target.castingpct > 50）
-    local castPercent = isCasting and target.castingpct or target.channelingpct
-    local threshold = cfg.interruptCastPercent or 20
-    
-    if castPercent and castPercent >= threshold then
-        return true, spellId
-    end
-    
-    return false, nil
-end
-
--- 🎯 智能查找需要打断的目标（混合模式）
--- 优先级1: 当前选中的目标
--- 优先级2: 附近40码内正在施法的敌人
-local function FindInterruptTarget()
-    -- 优先级1: 检查当前选中的目标
-    if target.exists and target.enemy and target.alive then
-        local needsInt, spellId = TargetNeedsInterrupt()
-        if needsInt then
-            if cfg.debug then
-                log(string.format("🎯 打断当前目标: %s (ID:%s)", target.name, tostring(spellId)))
-            end
-            return target, spellId
-        end
-    end
-    
-    -- 优先级2: 扫描附近40码内正在施法的敌人
-    local interruptTarget = Aurora.activeenemies:first(function(enemy)
-        -- 基础检查
-        if not enemy.exists or not enemy.alive or not enemy.enemy then
-            return false
-        end
-        
-        -- 检查是否在施法
-        local isCasting = enemy.casting or enemy.channeling
-        if not isCasting then return false end
-        
-        -- 检查是否可中断
-        local isInterruptible = enemy.castinginterruptible or enemy.channelinginterruptible
-        if not isInterruptible then return false end
-        
-        -- 检查距离（40码内）
-        if enemy.distanceto(player) > 40 then return false end
-        
-        -- 检查施法进度
-        local castPct = enemy.castingpct or enemy.channelingpct or 0
-        if castPct < (cfg.interruptCastPercent or 20) then
-            return false
-        end
-        
-        -- 检查列表
-        local spellId = enemy.castingspellid or enemy.channelingspellid
-        if cfg.interruptWithList then
-            if not ShouldInterruptSpell(spellId) then
-                return false
-            end
-        end
-        
-        return true
-    end)
-    
-    if interruptTarget then
-        local spellId = interruptTarget.castingspellid or interruptTarget.channelingspellid
-        if cfg.debug then
-            log(string.format("🔍 找到附近需要打断的敌人: %s (ID:%s)", interruptTarget.name, tostring(spellId)))
-        end
-        return interruptTarget, spellId
-    end
-    
-    return nil, nil
-end
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 打断辅助函数 - 已移至 Interface.lua
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 所有打断逻辑现在由 Interface.lua 的回调统一处理
 
 -- Aurora 爆发开关检查函数
 local function ShouldUseCooldowns()
@@ -430,6 +307,26 @@ local function UseCombatPotion()
     end
     
     return false
+end
+
+------------------------------------------------------------------------
+-- 饰品引导追踪（防止打断1秒引导）
+------------------------------------------------------------------------
+
+local trinketChannelingUntil = 0  -- 引导结束时间
+local trinketChannelDuration = 1.2  -- 引导时长 + 缓冲（1秒引导 + 0.2秒缓冲）
+
+-- 检查饰品是否正在引导
+local function IsTrinketChanneling()
+    return GetTime() < trinketChannelingUntil
+end
+
+-- 设置饰品引导状态
+local function SetTrinketChanneling()
+    trinketChannelingUntil = GetTime() + trinketChannelDuration
+    if cfg.debug then
+        log("|cffff8800[等待]|r 饰品引导中，" .. trinketChannelDuration .. "秒内不使用其他技能")
+    end
 end
 
 ------------------------------------------------------------------------
@@ -699,7 +596,7 @@ local function UpdateCombatTime()
         end
     else
         combatStartTime = 0
-        lastInterruptTime = 0  -- 脱战时重置打断计时
+        -- 打断计时由 Interface.lua 管理
     end
 end
 
@@ -708,29 +605,8 @@ local function GetCombatTime()
     return GetTime() - combatStartTime
 end
 
--- 饰品引导追踪（防止打断1秒引导）
-local trinketChannelingUntil = 0  -- 引导结束时间
-local trinketChannelDuration = 1.2  -- 引导时长 + 缓冲（1秒引导 + 0.2秒缓冲）
-
 -- ✅ 优化：Whirlwind 改用 Aurora 内置的 timeSinceLastCast() 方法
 -- 不再需要手动追踪 lastWhirlwindTime 和 whirlwindGCD
-
--- 打断技能CD追踪（防止连续使用多个打断技能）
-local lastInterruptTime = 0  -- 上次打断技能使用时间
-local interruptCooldown = 0.5  -- 打断技能间隔（秒）
-
--- 检查饰品是否正在引导
-local function IsTrinketChanneling()
-    return GetTime() < trinketChannelingUntil
-end
-
--- 设置饰品引导状态
-local function SetTrinketChanneling()
-    trinketChannelingUntil = GetTime() + trinketChannelDuration
-    if cfg.debug then
-        log("|cffff8800[等待]|r 饰品引导中，" .. trinketChannelDuration .. "秒内不使用其他技能")
-    end
-end
 
 ------------------------------------------------------------------------
 -- 自动目标切换系统
@@ -874,127 +750,19 @@ end
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- 中断技能回调（优先级系统）
+-- 中断技能回调 - 已移至 Interface.lua
 ------------------------------------------------------------------------
-
--- 拳击（主要中断，15秒CD）
-S.Pummel:callback(function(spell)
-    -- 检查是否启用中断
-    if not ShouldUseInterrupt() or not cfg.usePummel then 
-        return false 
-    end
-    
-    -- 🎯 智能查找需要打断的目标（优先当前目标，然后扫描附近）
-    local interruptTarget, spellId = FindInterruptTarget()
-    if not interruptTarget then
-        return false
-    end
-    
-    if cfg.debug then
-        log(string.format("✊ 拳击打断 %s (ID:%s)", interruptTarget.name, tostring(spellId)))
-    end
-    
-    -- 记录打断时间
-    local currentTime = GetTime()
-    local success = spell:cast(interruptTarget)
-    if success then
-        lastInterruptTime = currentTime
-    end
-    return success
-end)
-
--- 风暴之锤（备用中断，30秒CD，远程40码）
-S.StormBolt:callback(function(spell)
-    -- 检查是否启用
-    if not ShouldUseInterrupt() or not cfg.useStormBolt then 
-        return false 
-    end
-    
-    -- 检查是否刚使用过打断技能（防止连续打断）
-    local currentTime = GetTime()
-    if currentTime - lastInterruptTime < interruptCooldown then
-        return false
-    end
-    
-    -- 检查拳击是否可用（优先使用拳击）
-    if S.Pummel:ready() then
-        return false -- 拳击可用，让拳击去中断
-    end
-    
-    -- 🎯 智能查找需要打断的目标
-    local interruptTarget, spellId = FindInterruptTarget()
-    if not interruptTarget then
-        return false
-    end
-    
-    -- 检查敌人数量
-    local enemies = player.enemiesaround(40) or 0
-    if enemies < cfg.stormBoltEnemyCount then
-        return false
-    end
-    
-    if cfg.debug then
-        log(string.format("⚡ 风暴之锤打断 %s (ID:%s)", interruptTarget.name, tostring(spellId)))
-    end
-    
-    -- 记录打断时间
-    local success = spell:cast(interruptTarget)
-    if success then
-        lastInterruptTime = currentTime
-    end
-    return success
-end)
-
--- 震荡波（AOE中断，40秒CD，10码范围）
-S.Shockwave:callback(function(spell)
-    -- 检查是否启用
-    if not ShouldUseInterrupt() or not cfg.useShockwave then 
-        return false 
-    end
-    
-    -- 检查是否刚使用过打断技能（防止连续打断）
-    local currentTime = GetTime()
-    if currentTime - lastInterruptTime < interruptCooldown then
-        return false
-    end
-    
-    -- 检查拳击和风暴之锤是否可用（优先使用它们）
-    if S.Pummel:ready() or S.StormBolt:ready() then
-        return false -- 有其他中断技能可用
-    end
-    
-    -- 🎯 智能查找需要打断的目标
-    local interruptTarget, spellId = FindInterruptTarget()
-    if not interruptTarget then
-        return false
-    end
-    
-    -- 检查周围敌人数量（震荡波是AOE技能）
-    local enemies = player.enemiesaround(10) or 0
-    if enemies < cfg.shockwaveEnemyCount then
-        return false
-    end
-    
-    if cfg.debug then
-        log(string.format("💥 震荡波打断 %s (ID:%s) - %d个敌人", interruptTarget.name, tostring(spellId), enemies))
-    end
-    
-    -- 记录打断时间
-    local success = spell:cast(player) -- 震荡波是以玩家为中心的AOE
-    if success then
-        lastInterruptTime = currentTime
-    end
-    return success
-end)
+-- 打断逻辑现在完全由 Interface.lua 的回调处理
+-- 这里不再定义任何打断回调，避免冲突
 
 -- 胜利在望（优先级高于狂暴回复，因为恢复更多）
 S.VictoryRush:callback(function(spell)
     if not cfg.useVictoryRush then return false end
     
-    -- 检查技能是否可用（需要击杀敌人后触发）
+    -- 检查技能CD是否好了
     if not spell:ready() then return false end
     
-    -- 血量检查
+    -- 检查血量是否低于阈值
     if player.healthpercent <= cfg.victoryRushThreshold then
         if cfg.debug then
             log(string.format("💚 胜利在望 - 血量: %d%% (阈值: %d%%)", 
@@ -1061,6 +829,384 @@ local function ShouldUseMajorCooldown(ttdThreshold)
     -- 其他情况（普通小怪）：不使用大技能
     return false
 end
+
+------------------------------------------------------------------------
+-- 智能打断系统
+------------------------------------------------------------------------
+
+-- 检查Aurora打断开关状态（支持多种可能的Toggle名称）
+local function IsInterruptEnabled()
+    if not Aurora or not Aurora.Rotation then
+        return true -- Aurora不存在时，默认启用
+    end
+    
+    -- 尝试多个可能的Toggle名称（按常用顺序）
+    local toggleNames = {
+        "Interrupt",        -- 最常用名称
+        "InterruptToggle",  -- 备选名称1
+        "Interrupts",       -- 备选名称2
+        "InterruptsToggle", -- 备选名称3
+    }
+    
+    for _, name in ipairs(toggleNames) do
+        local toggle = Aurora.Rotation[name]
+        if toggle and type(toggle.GetValue) == "function" then
+            local value = toggle:GetValue()
+            if cfg.debug then
+                log(string.format("🔍 [打断开关] 找到 Aurora.Rotation.%s = %s", name, tostring(value)))
+            end
+            return value
+        end
+    end
+    
+    -- 如果找不到任何打断Toggle，默认启用
+    if cfg.debug then
+        log("⚠️ [打断开关] 未找到 Aurora 打断 Toggle，默认启用")
+    end
+    return true
+end
+
+-- 检查最近是否使用了延迟打断技能（防止技能浪费）
+local function HasRecentDelayedInterrupt()
+    -- 震荡波：10码AOE，有延迟（需要1.5秒等待打中）
+    local shockwaveDelay = 1.5
+    if S.Shockwave and S.Shockwave:timeSinceLastCast() < shockwaveDelay then
+        if cfg.debug then
+            log(string.format("⏱️ 震荡波刚释放 %.1f秒前，等待打中", S.Shockwave:timeSinceLastCast()))
+        end
+        return true
+    end
+    
+    -- 风暴之锤：40码远程，有飞行时间（需要1秒等待打中）
+    local stormBoltDelay = 1.0
+    if S.StormBolt and S.StormBolt:timeSinceLastCast() < stormBoltDelay then
+        if cfg.debug then
+            log(string.format("⏱️ 风暴之锤刚释放 %.1f秒前，等待打中", S.StormBolt:timeSinceLastCast()))
+        end
+        return true
+    end
+    
+    return false
+end
+
+-- 检查技能是否应该被中断（使用 Aurora 列表）
+local function ShouldInterruptSpell(spellId)
+    -- 如果不使用列表，中断所有
+    if not cfg.interruptWithList then
+        return true
+    end
+    
+    -- 检查列表是否存在
+    if not Aurora.Lists or not Aurora.Lists.InterruptSpells then
+        return true -- 列表不存在，安全起见中断所有
+    end
+    
+    -- 列表为空，中断所有
+    if #Aurora.Lists.InterruptSpells == 0 then
+        return true
+    end
+    
+    -- 检查 spellId 是否在列表中
+    if not spellId then
+        return false
+    end
+    
+    for _, interruptSpellId in ipairs(Aurora.Lists.InterruptSpells) do
+        if spellId == interruptSpellId then
+            return true
+        end
+    end
+    
+    return false -- 不在列表中
+end
+
+-- 检查目标是否需要中断（按文档最佳实践）
+local function TargetNeedsInterrupt()
+    -- 按照文档示例：简洁的链式检查
+    -- 文档示例：if target.exists and target.casting then
+    if not target.exists then return false, nil end
+    if not target.alive then return false, nil end
+    if not target.enemy then return false, nil end
+    
+    -- 检查是否在施法（普通施法或引导）
+    local isCasting = target.casting
+    local isChanneling = target.channeling
+    if not isCasting and not isChanneling then return false, nil end
+    
+    -- 检查是否可中断
+    local isInterruptible = isCasting and target.castinginterruptible or target.channelinginterruptible
+    if not isInterruptible then return false, nil end
+    
+    -- 获取施法的技能ID
+    local spellId = isCasting and target.castingspellid or target.channelingspellid
+    
+    -- 列表检查（如果启用）
+    if not ShouldInterruptSpell(spellId) then
+        return false, spellId
+    end
+    
+    -- 施法进度检查（文档示例：target.castingpct > 50）
+    local castPercent = isCasting and target.castingpct or target.channelingpct
+    local threshold = cfg.interruptCastPercent or 40
+    
+    if castPercent and castPercent >= threshold then
+        return true, spellId
+    end
+    
+    return false, nil
+end
+
+-- 🎯 智能查找需要打断的目标（混合模式）
+-- 优先级1: 当前选中的目标
+-- 优先级2: 附近40码内正在施法的敌人
+local function FindInterruptTarget()
+    -- 优先级1: 检查当前选中的目标
+    if target.exists and target.enemy and target.alive then
+        local needsInt, spellId = TargetNeedsInterrupt()
+        if needsInt then
+            if cfg.debug then
+                log(string.format("🎯 打断当前目标: %s (ID:%s)", target.name, tostring(spellId)))
+            end
+            return target, spellId
+        end
+    end
+    
+    -- 优先级2: 扫描附近40码内正在施法的敌人
+    local interruptTarget = Aurora.activeenemies:first(function(enemy)
+        -- 基础检查
+        if not enemy.exists or not enemy.alive or not enemy.enemy then
+            return false
+        end
+        
+        -- 检查是否在施法
+        local isCasting = enemy.casting or enemy.channeling
+        if not isCasting then return false end
+        
+        -- 检查是否可中断
+        local isInterruptible = enemy.castinginterruptible or enemy.channelinginterruptible
+        if not isInterruptible then return false end
+        
+        -- 检查距离（40码内）
+        if enemy.distanceto(player) > 40 then return false end
+        
+        -- 检查施法进度
+        local castPct = enemy.castingpct or enemy.channelingpct or 0
+        if castPct < (cfg.interruptCastPercent or 40) then
+            return false
+        end
+        
+        -- 检查列表
+        local spellId = enemy.castingspellid or enemy.channelingspellid
+        if cfg.interruptWithList then
+            if not ShouldInterruptSpell(spellId) then
+                return false
+            end
+        end
+        
+        return true
+    end)
+    
+    if interruptTarget then
+        local spellId = interruptTarget.castingspellid or interruptTarget.channelingspellid
+        if cfg.debug then
+            log(string.format("🔍 找到附近需要打断的敌人: %s (ID:%s)", interruptTarget.name, tostring(spellId)))
+        end
+        return interruptTarget, spellId
+    end
+    
+    return nil, nil
+end
+
+-- 统计正在读条且可打断的敌人数量
+local function CountCastingEnemies()
+    local count = 0
+    local castingEnemies = {}
+    
+    Aurora.activeenemies:each(function(enemy)
+        if enemy.exists and enemy.alive and not enemy.dead then
+            -- 检查是否在施法或引导
+            local isCasting = enemy.casting or enemy.channeling
+            local isInterruptible = enemy.castinginterruptible or enemy.channelinginterruptible
+            
+            if isCasting and isInterruptible then
+                -- 检查施法进度是否达到阈值
+                local castPct = enemy.castingpct or 0
+                local minCastPct = cfg.interruptCastPercent or 40
+                
+                if castPct >= minCastPct then
+                    -- ✅ 检查列表（如果启用）
+                    local spellId = enemy.castingspellid or enemy.channelingspellid
+                    if ShouldInterruptSpell(spellId) then
+                        count = count + 1
+                        table.insert(castingEnemies, enemy)
+                    end
+                end
+            end
+        end
+    end)
+    
+    return count, castingEnemies
+end
+
+------------------------------------------------------------------------
+-- 技能回调系统
+------------------------------------------------------------------------
+
+-- 拳击（主要中断，15秒CD，即时生效）
+S.Pummel:callback(function(spell)
+    -- 检查是否启用中断
+    if not IsInterruptEnabled() or not cfg.usePummel then 
+        return false 
+    end
+    
+    -- ⏱️ 延迟检查：如果刚用过延迟打断技能，等待其生效
+    if HasRecentDelayedInterrupt() then
+        return false
+    end
+    
+    -- 📊 检查读条怪物数量
+    local castingCount = CountCastingEnemies()
+    
+    -- 🎯 多目标优先级：2+怪读条时，优先让震荡波AOE打断
+    if castingCount >= 2 and cfg.useShockwave and S.Shockwave:ready() then
+        if cfg.debug then
+            log(string.format("⚡ 有%d个怪读条，优先使用震荡波AOE打断", castingCount))
+        end
+        return false -- 让震荡波去处理
+    end
+    
+    -- 🎯 智能查找需要打断的目标（优先当前目标，然后扫描附近）
+    local interruptTarget, spellId = FindInterruptTarget()
+    if not interruptTarget then
+        return false
+    end
+    
+    if cfg.debug then
+        log(string.format("✊ 拳击打断 %s (ID:%s)", interruptTarget.name, tostring(spellId)))
+    end
+    
+    return spell:cast(interruptTarget)
+end)
+
+-- 风暴之锤（备用中断，30秒CD，远程40码，有飞行时间）
+S.StormBolt:callback(function(spell)
+    -- 检查是否启用
+    if not IsInterruptEnabled() or not cfg.useStormBolt then 
+        return false 
+    end
+    
+    -- ⏱️ 延迟检查：如果刚用过震荡波，等待其生效
+    if S.Shockwave and S.Shockwave:timeSinceLastCast() < 1.5 then
+        if cfg.debug then
+            log(string.format("⏱️ 震荡波刚释放，等待生效"))
+        end
+        return false
+    end
+    
+    -- 📊 检查读条怪物数量
+    local castingCount = CountCastingEnemies()
+    
+    -- 🎯 多目标优先级：2+怪读条时，优先让震荡波AOE打断
+    if castingCount >= 2 and cfg.useShockwave and S.Shockwave:ready() then
+        if cfg.debug then
+            log(string.format("⚡ 有%d个怪读条，优先使用震荡波AOE打断", castingCount))
+        end
+        return false -- 让震荡波去处理
+    end
+    
+    -- 检查拳击是否启用且可用（优先使用拳击）
+    -- ⚠️ 必须同时检查配置开关和CD状态
+    if cfg.usePummel and S.Pummel:ready() then
+        return false -- 拳击启用且可用，让拳击去中断
+    end
+    
+    -- 🎯 智能查找需要打断的目标
+    local interruptTarget, spellId = FindInterruptTarget()
+    if not interruptTarget then
+        return false
+    end
+    
+    -- Boss免疫风暴之锤（眩晕效果无效）
+    if interruptTarget.isboss then
+        return false
+    end
+    
+    -- 检查敌人数量
+    local enemies = player.enemiesaround(40) or 0
+    if enemies < cfg.stormBoltEnemyCount then
+        return false
+    end
+    
+    if cfg.debug then
+        log(string.format("⚡ 风暴之锤打断 %s (ID:%s)", interruptTarget.name, tostring(spellId)))
+    end
+    
+    return spell:cast(interruptTarget)
+end)
+
+-- 震荡波（AOE中断，40秒CD，10码范围，有延迟）
+S.Shockwave:callback(function(spell)
+    -- 检查是否启用
+    if not IsInterruptEnabled() or not cfg.useShockwave then 
+        return false 
+    end
+    
+    -- 📊 检查读条怪物数量
+    local castingCount = CountCastingEnemies()
+    
+    -- 🎯 智能优先级判断
+    -- 场景1: 2+怪读条 → 震荡波最优（AOE群体打断）
+    if castingCount >= 2 then
+        -- 找一个读条目标确认位置
+        local interruptTarget = FindInterruptTarget()
+        if interruptTarget then
+            -- Boss免疫震荡波（眩晕效果无效）
+            if not interruptTarget.isboss then
+                -- 检查周围敌人数量
+                local enemies = player.enemiesaround(10) or 0
+                if enemies >= cfg.shockwaveEnemyCount then
+                    if cfg.debug then
+                        log(string.format("💥 震荡波AOE打断 - %d个怪读条，周围%d个敌人", castingCount, enemies))
+                    end
+                    return spell:cast(player) -- 震荡波是以玩家为中心的AOE
+                end
+            end
+        end
+    end
+    
+    -- 场景2: 单怪读条 → 作为兜底（拳击和风暴之锤都CD时）
+    if castingCount >= 1 then
+        -- 检查拳击和风暴之锤是否启用且可用
+        local pummelAvailable = cfg.usePummel and S.Pummel:ready()
+        local stormBoltAvailable = cfg.useStormBolt and S.StormBolt:ready()
+        
+        if pummelAvailable or stormBoltAvailable then
+            return false -- 有其他中断技能可用，优先使用
+        end
+        
+        -- 🎯 智能查找需要打断的目标
+        local interruptTarget = FindInterruptTarget()
+        if not interruptTarget then
+            return false
+        end
+        
+        -- Boss免疫震荡波（眩晕效果无效）
+        if interruptTarget.isboss then
+            return false
+        end
+        
+        -- 检查周围敌人数量
+        local enemies = player.enemiesaround(10) or 0
+        if enemies >= cfg.shockwaveEnemyCount then
+            if cfg.debug then
+                log(string.format("💥 震荡波兜底打断 %s (ID:%s)", interruptTarget.name, tostring(FindInterruptTarget())))
+            end
+            return spell:cast(player)
+        end
+    end
+    
+    return false
+end)
 
 -- 鲁莽 (受 Aurora 爆发开关控制)
 S.Recklessness:callback(function(spell)
@@ -1277,11 +1423,8 @@ local function SimCRotation()
     end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 中断（最高优先级）
+    -- 中断（由 Interface.lua 的回调自动处理，无需显式调用）
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if S.Pummel:execute() then return true end
-    if S.StormBolt:execute() then return true end
-    if S.Shockwave:execute() then return true end
     
     -- 治疗
     if UseHealthstone() then return true end
@@ -1709,7 +1852,11 @@ local function SimCRotationV2()
         if S.Bloodthirst:execute() then return true end
     end
     
-    -- 中断（最高优先级）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【最高优先级】打断系统
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- execute() 会触发在 Rotation.lua 中定义的 callback
+    -- callback 中包含所有打断逻辑（开关检查、目标选择、列表检查等）
     if S.Pummel:execute() then return true end
     if S.StormBolt:execute() then return true end
     if S.Shockwave:execute() then return true end
@@ -2063,13 +2210,7 @@ local function Dps()
             enemies, tostring(enrageUp), enrageRem, rage, mcStacks, mcRem, cdEnabled))
     end
     
-    -- 中断（最高优先级，按CD优先级依次尝试）
-    -- 1. 拳击（15秒CD，优先）
-    if S.Pummel:execute() then return true end
-    -- 2. 风暴之锤（30秒CD，拳击CD时使用）
-    if S.StormBolt:execute() then return true end
-    -- 3. 震荡波（40秒CD，前两者都CD时使用）
-    if S.Shockwave:execute() then return true end
+    -- 中断（由 Interface.lua 的回调自动处理，无需显式调用）
     
     -- 治疗石（血量低时）
     if UseHealthstone() then return true end
@@ -2669,11 +2810,11 @@ if Aurora.Macro then
         :Slider({
             text = "施法进度 (%)",
             key = "fury.interrupt.castPercent",
-            default = 30,
+            default = 40,
             min = 20,
             max = 80,
             step = 5,
-            tooltip = "只有当施法进度到达此百分比才打断\n建议: 20-40%",
+            tooltip = "只有当施法进度到达此百分比才打断",
             onChange = function(self, value)
                 cfg.interruptCastPercent = value
                 print("|cff00ff00[TT狂战]|r 施法进度阈值设置为: " .. value .. "%")
@@ -3341,7 +3482,7 @@ if Aurora.Macro then
                     print(string.format("引导进度: |cff00ff00%.1f%%|r (已用: %.2fs, 剩余: %.2fs)", castPercent, duration, remains))
                 end
                 
-                local threshold = cfg.interruptCastPercent or 20
+                local threshold = cfg.interruptCastPercent or 40
                 if castPercent >= threshold then
                     print(string.format("进度检查: |cff00ff00%.1f%% >= %d%% 允许打断|r", castPercent, threshold))
                 else
@@ -3839,7 +3980,26 @@ SLASH_FURYTARGET2 = "/狂怒"
 
 -- 命令处理函数
 SlashCmdList["FURYTARGET"] = function(msg)
-    local command = string.lower(string.trim(msg or ""))
+    -- 【调试】立即输出，确认函数被调用
+    print("━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("[调试] Slash命令被调用")
+    print("[调试] 原始输入 msg = " .. tostring(msg))
+    
+    -- 先测试是否能执行
+    if not msg or msg == "" then
+        msg = "help"
+    end
+    
+    local command = string.lower(strtrim(msg))
+    print("[调试] 处理后的 command = " .. tostring(command))
+    print("━━━━━━━━━━━━━━━━━━━━━━━━")
+    
+    -- /fury test - 测试命令是否工作
+    if command == "test" then
+        print("|cff00ff00[TT狂战]|r Slash命令系统正常工作！")
+        print("命令输入: " .. tostring(msg))
+        return
+    end
     
     -- /fury target - 快速开关自动目标切换
     if command == "target" or command == "目标" then
@@ -3930,6 +4090,49 @@ SlashCmdList["FURYTARGET"] = function(msg)
         return
     end
     
+    -- /fury debug - 调试打断开关
+    if command == "debug" then
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        print("|cff00ff00[TT狂战]|r 打断开关调试")
+        print(" ")
+        
+        -- 读取原始配置值
+        local rawPummel = Aurora.Config:Read("fury.usePummel")
+        print("|cff00ffffGUI配置原始值:|r")
+        print("  fury.usePummel = " .. tostring(rawPummel) .. " (type: " .. type(rawPummel) .. ")")
+        
+        -- 通过 cfg 访问器读取
+        print(" ")
+        print("|cff00ffffcfg 访问器读取值:|r")
+        print("  cfg.usePummel = " .. tostring(cfg.usePummel) .. " (type: " .. type(cfg.usePummel) .. ")")
+        
+        -- 检查 Aurora.Rotation
+        print(" ")
+        print("|cff00ffffAurora.Rotation 状态:|r")
+        if Aurora and Aurora.Rotation then
+            print("  Aurora.Rotation 存在: true")
+            
+            local toggleNames = {"InterruptToggle", "Interrupts", "InterruptsToggle"}
+            for _, name in ipairs(toggleNames) do
+                local toggle = Aurora.Rotation[name]
+                if toggle then
+                    print("  " .. name .. " 存在: true")
+                    if type(toggle.GetValue) == "function" then
+                        local value = toggle:GetValue()
+                        print("  " .. name .. ":GetValue() = " .. tostring(value))
+                    end
+                else
+                    print("  " .. name .. " 存在: false")
+                end
+            end
+        else
+            print("  Aurora.Rotation 不存在")
+        end
+        
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        return
+    end
+    
     -- /fury interrupt 或 /fury 打断 - 查看打断状态
     if command == "interrupt" or command == "打断" or command == "interrupt status" then
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
@@ -3993,9 +4196,29 @@ SlashCmdList["FURYTARGET"] = function(msg)
         end
         print(" ")
         
+        -- 检查列表配置
+        print("|cff00ffff列表配置:|r")
+        local useList = cfg.interruptWithList
+        if useList then
+            print("  使用Aurora列表: |cff00ff00✅ 已启用|r")
+            if Aurora.Lists and Aurora.Lists.InterruptSpells then
+                local listCount = #Aurora.Lists.InterruptSpells
+                if listCount > 0 then
+                    print("  列表技能数: |cff00ff00" .. listCount .. "|r")
+                else
+                    print("  |cffff8800⚠ 列表为空，将打断所有技能|r")
+                end
+            else
+                print("  |cffff8800⚠ 列表不存在，将打断所有技能|r")
+            end
+        else
+            print("  使用Aurora列表: |cffff0000❌ 已禁用 (打断所有技能)|r")
+        end
+        print(" ")
+        
         -- 检查阈值设置
         print("|cff00ffff打断阈值:|r")
-        print("  施法进度: |cff00ff00" .. (cfg.interruptCastPercent or 30) .. "%|r")
+        print("  施法进度: |cff00ff00" .. (cfg.interruptCastPercent or 40) .. "%|r")
         print("  风暴之锤读条怪数: |cff00ff00" .. (cfg.stormBoltEnemyCount or 1) .. "|r")
         print("  震荡波读条怪数: |cff00ff00" .. (cfg.shockwaveEnemyCount or 2) .. "|r")
         print(" ")
@@ -4026,6 +4249,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
         print(" ")
         print("|cff00ffff打断系统:|r")
         print("  |cff00ff00/fury interrupt|r - 查看打断状态")
+        print("  |cff00ff00/fury debug|r - 调试打断开关")
         print(" ")
         print("|cff00ffff其他命令:|r")
         print("  |cff00ff00/aurora|r - 打开设置界面")
