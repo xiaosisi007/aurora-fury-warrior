@@ -1286,6 +1286,7 @@ local function SimCRotation()
     -- 治疗
     if UseHealthstone() then return true end
     if UseHealingPotion() then return true end
+    if S.VictoryRush:execute() then return true end
     if S.EnragingRegeneration:execute() then return true end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1716,6 +1717,7 @@ local function SimCRotationV2()
     -- 治疗
     if UseHealthstone() then return true end
     if UseHealingPotion() then return true end
+    if S.VictoryRush:execute() then return true end
     if S.EnragingRegeneration:execute() then return true end
     
     -- 饰品和药水（受爆发开关控制）
