@@ -44,7 +44,6 @@ if Aurora and Aurora.Config then
     Aurora.Config:SetDefault("fury.rotation.mode", 2)  -- 1=主播手法, 2=SimC模拟（大秘境手法）
     Aurora.Config:SetDefault("fury.rotation.streamer", false)  -- 主播手法开关
     Aurora.Config:SetDefault("fury.rotation.simc", true)     -- SimC模拟开关（大秘境手法）
-    Aurora.Config:SetDefault("fury.rotation.version", 1)  -- 循环版本: 1=第一版（当前），2=第二版（完整APL）
     
     -- 大技能
     Aurora.Config:SetDefault("fury.useRecklessness", true)
@@ -718,18 +717,15 @@ end
 
 -- 战斗时间追踪
 local combatStartTime = 0
-local combatVersionShown = false  -- 追踪是否已显示循环版本提示
 
 local function UpdateCombatTime()
     if player.combat then
         if combatStartTime == 0 then
             combatStartTime = GetTime()
-            combatVersionShown = false  -- 进入战斗时重置标志
         end
     else
         combatStartTime = 0
         lastInterruptTime = 0  -- 脱战时重置打断计时
-        combatVersionShown = false  -- 脱战时重置标志
     end
 end
 
@@ -1246,12 +1242,6 @@ end)
 local function SimCRotation()
     UpdateCombatTime()
     
-    -- 首次战斗时显示循环版本（只显示一次）
-    if not combatVersionShown then
-        combatVersionShown = true
-        print("|cff00ff00[循环V1]|r 使用 |cff00ffff第一版循环|r（Bloodthirst严格条件）")
-    end
-    
     -- 首次战斗时打印调试信息
     DebugAuroraCooldowns()
     
@@ -1686,12 +1676,6 @@ end
 local function SimCRotationV2()
     UpdateCombatTime()
     
-    -- 首次战斗时显示循环版本（只显示一次）
-    if not combatVersionShown then
-        combatVersionShown = true
-        print("|cffff8800[循环V2]|r 使用 |cffff8800第二版循环|r（完整SimC APL - 3次Bloodthirst）|cffff0000 ⚠️实验|r")
-    end
-    
     -- 首次战斗时打印调试信息
     DebugAuroraCooldowns()
     
@@ -2061,10 +2045,11 @@ local function SimCRotationV2()
     -- 32. Wrecking Throw
     -- (通常不在循环中实现)
     
-    -- 33. Whirlwind（兜底技能）
-    -- ✅ 只有在近战范围内且有敌人时才使用
-    if player.melee(target) and enemies > 0 then
-        if S.Whirlwind:execute() then return true end
+    -- 33. Bloodthirst（兜底填充 - 单体和多目标）
+    -- ✅ 所有情况都用嗜血填充，避免空转
+    -- ✅ 旋风斩只用于铺层数，不作为填充技能
+    if S.Bloodthirst and S.Bloodthirst:ready() then
+        if S.Bloodthirst:execute() then return true end
     end
     
     -- 34. Storm Bolt（仅用于控制，不作为输出）
@@ -2438,28 +2423,14 @@ end
 ------------------------------------------------------------------------
 -- 职业和天赋检查已在文件开头完成
 -- 代码能执行到这里，说明已经是狂怒战士了
--- 根据循环版本选择调用对应的函数
+-- 默认使用SimC V2循环（完整APL - 3次Bloodthirst）
 Aurora:RegisterRoutine(function()
     if player.dead or player.aura("Food") or player.aura("Drink") then 
         return 
     end
     
     if player.combat then
-        local version = cfg.rotationVersion or 1
-        
-        if version == 2 then
-            -- 第二版：完整SimC APL（包含3次Bloodthirst）
-            if cfg.debug then
-                print("|cffff8800[循环V2]|r 使用完整SimC APL（3次Bloodthirst）")
-            end
-            SimCRotationV2()
-        else
-            -- 第一版：当前SimC循环（只有1次Bloodthirst）
-            if cfg.debug then
-                print("|cff00ff00[循环V1]|r 使用优化SimC循环（1次Bloodthirst）")
-            end
-            SimCRotation()
-        end
+        SimCRotationV2()
     else
         Ooc()
     end
@@ -2477,41 +2448,53 @@ if Aurora.Macro then
     gui:Category("屠戮狂战")
         :Tab("简介")
         :Header({ text = "欢迎使用屠戮狂战循环!" })
-        :Text({ text = "", size = 8 })
+        :Spacer()
         
         :Text({
             text = "1. 关于目标",
-            size = 26,
-            color = {r = 1, g = 1, b = 1, a = 1}
+            size = 15,
+            color = {r = 1, g = 1, b = 1, a = 1},
+            inherit = "GameFontNormalLarge",
+            width = 500
         })
         :Text({
             text = "Modules -> Auto Target -> Auto Target -> Highest -> OnlyDead",
-            size = 24,
-            color = {r = 1, g = 1, b = 1, a = 1}
+            size = 14,
+            color = {r = 0.9, g = 0.9, b = 0.9, a = 1},
+            inherit = "GameFontNormal",
+            width = 500
         })
-        :Text({ text = "", size = 10 })
+        :Spacer()
         
         :Text({
             text = "2. 关于天赋",
-            size = 26,
-            color = {r = 1, g = 1, b = 1, a = 1}
+            size = 15,
+            color = {r = 1, g = 1, b = 1, a = 1},
+            inherit = "GameFontNormalLarge",
+            width = 500
         })
         :Text({
             text = "目前只支持屠戮天赋",
-            size = 24,
-            color = {r = 1, g = 1, b = 1, a = 1}
+            size = 14,
+            color = {r = 0.9, g = 0.9, b = 0.9, a = 1},
+            inherit = "GameFontNormal",
+            width = 500
         })
-        :Text({ text = "", size = 10 })
+        :Spacer()
         
         :Text({
             text = "3. 关于技能插入",
-            size = 26,
-            color = {r = 1, g = 1, b = 1, a = 1}
+            size = 15,
+            color = {r = 1, g = 1, b = 1, a = 1},
+            inherit = "GameFontNormalLarge",
+            width = 500
         })
         :Text({
-            text = "我们就用Aurora原生的SmartQueue",
-            size = 24,
-            color = {r = 1, g = 1, b = 1, a = 1}
+            text = "我们就用 Aurora 原生的 SmartQueue",
+            size = 14,
+            color = {r = 0.9, g = 0.9, b = 0.9, a = 1},
+            inherit = "GameFontNormal",
+            width = 500
         })
     
         :Tab("药品/饰品")
@@ -2620,75 +2603,6 @@ if Aurora.Macro then
                 local mode = checked and "跟随爆发技能" or "CD好就用"
                 print("|cff00ff00[屠戮狂战]|r 爆发药水模式: " .. mode)
             end
-        })
-    
-    -- 循环标签页
-    gui:Tab("循环")
-        :Header({ text = Aurora.texture(135726, 16) .. " SimC循环版本选择" })
-        :Text({
-            text = "选择你想使用的输出循环版本",
-            size = 11,
-            color = {r = 1, g = 0.82, b = 0, a = 1}
-        })
-        :Text({ text = "", size = 3 })
-        :Checkbox({
-            text = Aurora.texture(871244, 14) .. " 第一版循环（推荐）",
-            key = "fury.rotation.useV1",
-            default = true,
-            tooltip = "当前循环版本\n\n特点:\n- 基于SimC大秘境APL\n- Bloodthirst使用严格条件限制\n- 平衡DPS和怒气管理\n- 占比合理，不过度使用\n\n推荐: 大部分场景使用",
-            onChange = function(self, checked)
-                if checked then
-                    Aurora.Config:Write("fury.rotation.version", 1)
-                    Aurora.Config:Write("fury.rotation.useV1", true)
-                    Aurora.Config:Write("fury.rotation.useV2", false)
-                    print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-                    print("|cff00ff00[屠戮狂战]|r 已切换到 |cffffff00第一版循环|r")
-                    print("|cff00ffff特点:|r Bloodthirst严格条件使用（推荐）")
-                    print("|cff808080调用次数: 1次 | 占比: 低|r")
-                    print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-                end
-            end
-        })
-        :Text({ text = "", size = 3 })
-        :Checkbox({
-            text = Aurora.texture(457970, 14) .. " 第二版循环（实验）",
-            key = "fury.rotation.useV2",
-            default = false,
-            tooltip = "完整SimC APL版本\n\n特点:\n- 包含SimC APL所有Bloodthirst调用（3次）\n- 缺少动态暴击率检查\n- Bloodthirst使用频率可能偏高\n- 更贴近SimC APL原文\n\n注意: 实验性功能，可能导致Bloodthirst过度使用",
-            onChange = function(self, checked)
-                if checked then
-                    Aurora.Config:Write("fury.rotation.version", 2)
-                    Aurora.Config:Write("fury.rotation.useV1", false)
-                    Aurora.Config:Write("fury.rotation.useV2", true)
-                    print("|cffff8800━━━━━━━━━━━━━━━━━━━━━━━━|r")
-                    print("|cffff8800[屠戮狂战]|r 已切换到 |cffffff00第二版循环|r |cffff0000（实验）|r")
-                    print("|cff00ffff特点:|r 完整SimC APL（包含3次Bloodthirst）")
-                    print("|cffff8800调用次数: 3次 | 占比: 高|r")
-                    print("|cffff0000⚠️ 警告:|r 缺少动态暴击率检查，可能过度使用")
-                    print("|cffff8800━━━━━━━━━━━━━━━━━━━━━━━━|r")
-                end
-            end
-        })
-        :Text({ text = "", size = 8 })
-        :Text({
-            text = "💡 两个版本的区别",
-            size = 11,
-            color = {r = 0.5, g = 1, b = 0.5, a = 1}
-        })
-        :Text({
-            text = "• 第一版: Bloodthirst只在严格条件下使用（推荐）",
-            size = 10,
-            color = {r = 0.8, g = 0.8, b = 0.8, a = 1}
-        })
-        :Text({
-            text = "• 第二版: 包含SimC APL的3次Bloodthirst调用",
-            size = 10,
-            color = {r = 0.8, g = 0.8, b = 0.8, a = 1}
-        })
-        :Text({
-            text = "• 第二版缺少动态暴击率检查，可能过度使用",
-            size = 10,
-            color = {r = 1, g = 0.5, b = 0.5, a = 1}
         })
     
     -- 辅助技能标签页
@@ -2801,23 +2715,23 @@ if Aurora.Macro then
             text = Aurora.texture(107570, 14) .. " 使用风暴之锤",
             key = "fury.interrupt.stormBolt",
             default = true,
-            tooltip = "启用/禁用风暴之锤打断\n当拳击CD时自动使用",
+            tooltip = "启用/禁用风暴之锤打断\n• 单体打断：1个读条怪时，拳击CD后使用\n• 30秒CD，远程40码",
             onChange = function(self, checked)
                 cfg.useStormBolt = checked
                 print("|cff00ff00[屠戮狂战]|r 风暴之锤已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = "敌人数量阈值",
+            text = "读条怪物数量",
             key = "fury.interrupt.stormBoltEnemyCount",
             default = 1,
             min = 1,
             max = 10,
             step = 1,
-            tooltip = "当周围敌人数量 >= 此值时才使用风暴之锤\n建议: 1 (单体和群体都使用)",
+            tooltip = "当读条且可打断的怪物数量 >= 此值时才使用",
             onChange = function(self, value)
                 cfg.stormBoltEnemyCount = value
-                print("|cff00ff00[屠戮狂战]|r 风暴之锤敌人数设置为: " .. value)
+                print("|cff00ff00[屠戮狂战]|r 风暴之锤读条怪数设置为: " .. value)
             end
         })
         
@@ -2826,23 +2740,23 @@ if Aurora.Macro then
             text = Aurora.texture(46968, 14) .. " 使用震荡波",
             key = "fury.interrupt.shockwave",
             default = true,
-            tooltip = "启用/禁用震荡波打断\n当拳击和风暴之锤都CD时使用",
+            tooltip = "启用/禁用震荡波打断\n• 多目标打断：2个以上读条怪时优先使用\n• 单体兜底：拳击和风暴都CD时使用\n• 40秒CD，范围10码",
             onChange = function(self, checked)
                 cfg.useShockwave = checked
                 print("|cff00ff00[屠戮狂战]|r 震荡波已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = "敌人数量阈值",
+            text = "读条怪物数量",
             key = "fury.interrupt.shockwaveEnemyCount",
-            default = 3,
+            default = 2,
             min = 1,
             max = 10,
             step = 1,
-            tooltip = "当周围敌人数量 >= 此值时才使用震荡波\n建议: 3 (多目标时使用)",
+            tooltip = "当读条且可打断的怪物数量 >= 此值时才使用",
             onChange = function(self, value)
                 cfg.shockwaveEnemyCount = value
-                print("|cff00ff00[屠戮狂战]|r 震荡波敌人数设置为: " .. value)
+                print("|cff00ff00[屠戮狂战]|r 震荡波读条怪数设置为: " .. value)
             end
         })
         
@@ -3908,29 +3822,6 @@ end)
 -- print("|cffffff00[提示]|r 切换天赋后将自动重载界面")
 
 ------------------------------------------------------------------------
--- 显示当前循环版本信息
-------------------------------------------------------------------------
-C_Timer.After(1.0, function()
-    -- 延迟1秒显示，确保配置系统加载完成
-    local currentVersion = Aurora.Config:Read("fury.rotation.version") or 1
-    
-    print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-    print("|cff00ff00[屠戮狂战]|r 模块加载完成")
-    
-    if currentVersion == 2 then
-        print("|cffffff00当前循环:|r |cffff8800第二版|r |cffff0000（实验）|r")
-        print("|cff808080Bloodthirst: 3次调用 | 占比: 高|r")
-        print("|cffff0000⚠️ 注意: 缺少暴击率检查|r")
-    else
-        print("|cffffff00当前循环:|r |cff00ff00第一版|r |cff00ffff（推荐）|r")
-        print("|cff808080Bloodthirst: 1次调用 | 占比: 低|r")
-    end
-    
-    print("|cff00ffff提示:|r 输入 /aurora 切换循环版本")
-    print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-end)
-
-------------------------------------------------------------------------
 -- 状态框架 - 自动目标切换按钮
 ------------------------------------------------------------------------
 -- 使用Aurora全局状态框架添加可视化切换按钮
@@ -4093,22 +3984,5 @@ SlashCmdList["FURYTARGET"] = function(msg)
     print("|cffff0000[屠戮狂战]|r 未知命令: " .. msg)
     print("|cff00ffff输入 |cff00ff00/fury help|r 查看帮助")
 end
-
--- 加载提示
-C_Timer.After(2.0, function()
-    -- 优先从状态栏按钮读取
-    local enabled = false
-    if Aurora.Rotation.AutoTargetToggle then
-        enabled = Aurora.Rotation.AutoTargetToggle:GetValue()
-    else
-        enabled = Aurora.Config:Read("fury.autoTarget")
-    end
-    
-    if enabled then
-        print("|cff00ffff💡 提示:|r 自动目标切换已启用")
-        print("|cff00ffff   状态栏:|r 点击「自动目标」按钮快速切换")
-        print("|cff00ffff   命令:|r |cff00ff00/fury target|r 快速开关")
-    end
-end)
 
 return MythicWarrior 
