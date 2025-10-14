@@ -3930,6 +3930,89 @@ SlashCmdList["FURYTARGET"] = function(msg)
         return
     end
     
+    -- /fury interrupt 或 /fury 打断 - 查看打断状态
+    if command == "interrupt" or command == "打断" or command == "interrupt status" then
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        print("|cff00ff00[TT狂战]|r 打断系统状态")
+        print(" ")
+        
+        -- 检查Aurora Cooldown框架状态（支持多种Toggle名称）
+        local cooldownEnabled = true
+        local toggleFound = false
+        local toggleName = "未知"
+        
+        if Aurora and Aurora.Rotation then
+            local toggleNames = {"InterruptToggle", "Interrupts", "InterruptsToggle"}
+            for _, name in ipairs(toggleNames) do
+                local toggle = Aurora.Rotation[name]
+                if toggle and type(toggle.GetValue) == "function" then
+                    cooldownEnabled = toggle:GetValue()
+                    toggleFound = true
+                    toggleName = name
+                    break
+                end
+            end
+        end
+        
+        print("|cff00ffffAurora状态栏 - Interrupt:|r")
+        if toggleFound then
+            if cooldownEnabled then
+                print("  |cff00ff00✅ 已启用|r (Toggle: " .. toggleName .. ")")
+            else
+                print("  |cffff0000❌ 已禁用 (所有打断失效)|r")
+            end
+        else
+            print("  |cffff8800⚠ 未找到打断Toggle，默认启用|r")
+            print("  |cff808080提示: 某些Aurora版本可能不支持|r")
+        end
+        print(" ")
+        
+        -- 检查GUI配置
+        print("|cff00ffffGUI配置状态:|r")
+        
+        local usePummel = cfg.usePummel
+        local useStormBolt = cfg.useStormBolt
+        local useShockwave = cfg.useShockwave
+        
+        if usePummel then
+            print("  拳击: |cff00ff00✅ 已启用|r")
+        else
+            print("  拳击: |cffff0000❌ 已禁用|r")
+        end
+        
+        if useStormBolt then
+            print("  风暴之锤: |cff00ff00✅ 已启用|r (对Boss无效)")
+        else
+            print("  风暴之锤: |cffff0000❌ 已禁用|r")
+        end
+        
+        if useShockwave then
+            print("  震荡波: |cff00ff00✅ 已启用|r (对Boss无效)")
+        else
+            print("  震荡波: |cffff0000❌ 已禁用|r")
+        end
+        print(" ")
+        
+        -- 检查阈值设置
+        print("|cff00ffff打断阈值:|r")
+        print("  施法进度: |cff00ff00" .. (cfg.interruptCastPercent or 30) .. "%|r")
+        print("  风暴之锤读条怪数: |cff00ff00" .. (cfg.stormBoltEnemyCount or 1) .. "|r")
+        print("  震荡波读条怪数: |cff00ff00" .. (cfg.shockwaveEnemyCount or 2) .. "|r")
+        print(" ")
+        
+        -- 最终状态
+        if cooldownEnabled and (usePummel or useStormBolt or useShockwave) then
+            print("|cff00ff00✅ 打断系统正常工作|r")
+        elseif not cooldownEnabled then
+            print("|cffff0000❌ 打断系统已禁用 (Aurora状态栏关闭)|r")
+        else
+            print("|cffff0000❌ 所有打断技能都已关闭|r")
+        end
+        
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        return
+    end
+    
     -- /fury help - 显示帮助
     if command == "help" or command == "帮助" or command == "" then
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
@@ -3940,6 +4023,9 @@ SlashCmdList["FURYTARGET"] = function(msg)
         print("  |cff00ff00/fury target status|r - 查看状态")
         print("  |cff00ff00/fury target on|r - 强制开启")
         print("  |cff00ff00/fury target off|r - 强制关闭")
+        print(" ")
+        print("|cff00ffff打断系统:|r")
+        print("  |cff00ff00/fury interrupt|r - 查看打断状态")
         print(" ")
         print("|cff00ffff其他命令:|r")
         print("  |cff00ff00/aurora|r - 打开设置界面")
@@ -3986,4 +4072,4 @@ C_Timer.After(2.5, function()
     end
 end)
 
-return MythicWarrior 
+return MythicWarrior xiao gu o
