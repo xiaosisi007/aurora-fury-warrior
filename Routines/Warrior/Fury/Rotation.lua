@@ -70,12 +70,12 @@ if Aurora and Aurora.Config then
     -- 中断设置
     Aurora.Config:SetDefault("fury.useInterrupt", true)
     Aurora.Config:SetDefault("fury.interruptWithList", true)
-    Aurora.Config:SetDefault("fury.interruptCastPercent", 20)  -- 施法进度百分比阈值
+    Aurora.Config:SetDefault("fury.interruptCastPercent", 30)  -- 施法进度百分比阈值
     Aurora.Config:SetDefault("fury.usePummel", true)
     Aurora.Config:SetDefault("fury.useStormBolt", true)
     Aurora.Config:SetDefault("fury.stormBoltEnemyCount", 1)
     Aurora.Config:SetDefault("fury.useShockwave", true)
-    Aurora.Config:SetDefault("fury.shockwaveEnemyCount", 3)
+    Aurora.Config:SetDefault("fury.shockwaveEnemyCount", 2)
     
     -- AOE阈值
     Aurora.Config:SetDefault("fury.aoeThreshold4", 4)
@@ -83,6 +83,9 @@ if Aurora and Aurora.Config then
     
     -- 调试
     Aurora.Config:SetDefault("fury.debug", false)
+    
+    -- 版本追踪
+    Aurora.Config:SetDefault("fury.lastSeenVersion", "0.0.0")
 end
 
 -- 配置读取函数
@@ -136,12 +139,12 @@ local cfg = setmetatable({}, {
         -- 中断设置
         if key == "useInterrupt" then return GetConfig("useInterrupt", true) end
         if key == "interruptWithList" then return GetConfig("interruptWithList", true) end
-        if key == "interruptCastPercent" then return GetConfig("interruptCastPercent", 20) end
+        if key == "interruptCastPercent" then return GetConfig("interruptCastPercent", 30) end
         if key == "usePummel" then return GetConfig("usePummel", true) end
         if key == "useStormBolt" then return GetConfig("useStormBolt", true) end
         if key == "stormBoltEnemyCount" then return GetConfig("stormBoltEnemyCount", 1) end
         if key == "useShockwave" then return GetConfig("useShockwave", true) end
-        if key == "shockwaveEnemyCount" then return GetConfig("shockwaveEnemyCount", 3) end
+        if key == "shockwaveEnemyCount" then return GetConfig("shockwaveEnemyCount", 2) end
         
         -- AOE阈值
         if key == "aoeThreshold4" then return GetConfig("aoeThreshold4", 4) end
@@ -339,35 +342,6 @@ local function log(msg)
     end
 end
 
--- 调试：打印 Aurora Toggle 状态（只在首次战斗时执行一次）
-local debugPrinted = false
-local function DebugAuroraCooldowns()
-    if debugPrinted then return end
-    debugPrinted = true
-    
-    print("|cffff00ff========== Aurora Toggle 调试 ==========|r")
-    
-    -- 检测 Aurora.Rotation.Cooldown Toggle
-    if Aurora.Rotation and Aurora.Rotation.Cooldown then
-        local cdValue = Aurora.Rotation.Cooldown:GetValue()
-        print("✓ Cooldown Toggle = " .. tostring(cdValue))
-    else
-        print("✗ Cooldown Toggle = nil")
-    end
-    
-    -- 检测 Aurora.Rotation.Interrupt Toggle
-    if Aurora.Rotation and Aurora.Rotation.Interrupt then
-        local intValue = Aurora.Rotation.Interrupt:GetValue()
-        print("✓ Interrupt Toggle = " .. tostring(intValue))
-    else
-        print("✗ Interrupt Toggle = nil")
-    end
-    
-    -- 最终结果
-    print("✓ 最终爆发状态 = " .. tostring(ShouldUseCooldowns()))
-    print("✓ 最终中断状态 = " .. tostring(ShouldUseInterrupt()))
-    print("|cffff00ff========================================|r")
-end
 
 ------------------------------------------------------------------------
 -- 物品 ID 定义
@@ -1242,8 +1216,6 @@ end)
 local function SimCRotation()
     UpdateCombatTime()
     
-    -- 首次战斗时打印调试信息
-    DebugAuroraCooldowns()
     
     if player.dead then return false end
     
@@ -1676,8 +1648,6 @@ end
 local function SimCRotationV2()
     UpdateCombatTime()
     
-    -- 首次战斗时打印调试信息
-    DebugAuroraCooldowns()
     
     if player.dead then return false end
     
@@ -2063,8 +2033,6 @@ end
 local function Dps()
     UpdateCombatTime()
     
-    -- 首次战斗时打印调试信息
-    DebugAuroraCooldowns()
     
     if player.dead then return false end
     
@@ -3133,8 +3101,6 @@ if Aurora.Macro then
             local status = cfg.manualCooldownsEnabled and "|cff00ff00启用|r" or "|cffff0000禁用|r"
             print("|cff00ff00[TT狂战]|r 爆发技能已切换为: " .. status)
         end
-        -- 重置调试打印，以便下次战斗时显示新状态
-        debugPrinted = false
     end, "切换爆发技能 (on/off/toggle)")
     
     -- 切换调试模式
@@ -3150,7 +3116,6 @@ if Aurora.Macro then
             local status = cfg.debug and "|cff00ff00启用|r" or "|cffff0000禁用|r"
             print("|cff00ff00[TT狂战]|r 调试模式已切换为: " .. status)
         end
-        debugPrinted = false
     end, "切换调试模式 (on/off/toggle)")
     
     -- 显示当前状态
@@ -3984,5 +3949,39 @@ SlashCmdList["FURYTARGET"] = function(msg)
     print("|cffff0000[TT狂战]|r 未知命令: " .. msg)
     print("|cff00ffff输入 |cff00ff00/fury help|r 查看帮助")
 end
+
+------------------------------------------------------------------------
+-- 加载完成通知
+------------------------------------------------------------------------
+
+-- 延迟显示 Toast 通知，确保所有内容都加载完成
+C_Timer.After(2.5, function()
+    if Aurora and Aurora.Toast and Aurora.Config then
+        local currentVersion = MythicWarrior.Version or "2.1.0"
+        local lastSeenVersion = Aurora.Config:Read("fury.lastSeenVersion") or "0.0.0"
+        local playerName = UnitName("player") or "战士"
+        
+        -- 检查是否为新版本
+        if currentVersion ~= lastSeenVersion then
+            -- 保存当前版本
+            Aurora.Config:Write("fury.lastSeenVersion", currentVersion)
+            
+            -- 判断是首次使用还是更新
+            if lastSeenVersion == "0.0.0" then
+                -- 首次使用
+                Aurora.Toast:Show(
+                    string.format("TT狂战 v%s", currentVersion),
+                    string.format("欢迎, %s! 输入 /fury help 查看命令", playerName)
+                )
+            else
+                -- 版本更新
+                Aurora.Toast:Show(
+                    string.format("TT狂战已更新至 v%s", currentVersion),
+                    "优化：移除调试信息 | 打断默认值优化"
+                )
+            end
+        end
+    end
+end)
 
 return MythicWarrior 
