@@ -54,7 +54,7 @@ if Aurora and Aurora.Config then
     -- 辅助技能
     Aurora.Config:SetDefault("fury.useEnragingRegeneration", true)
     Aurora.Config:SetDefault("fury.enragingRegenerationThreshold", 45)
-    Aurora.Config:SetDefault("fury.useVictoryRush", true)
+    Aurora.Config:SetDefault("fury.useVictoryRush", false)  -- 临时关闭，待明天修复
     Aurora.Config:SetDefault("fury.victoryRushThreshold", 40)
     Aurora.Config:SetDefault("fury.useSpellReflection", true)
     Aurora.Config:SetDefault("fury.spellReflectionCastPercent", 60)  -- 施法进度阈值
@@ -117,7 +117,7 @@ local cfg = setmetatable({}, {
         -- 辅助技能
         if key == "useEnragingRegeneration" then return GetConfig("useEnragingRegeneration", true) end
         if key == "enragingRegenerationThreshold" then return GetConfig("enragingRegenerationThreshold", 45) end
-        if key == "useVictoryRush" then return GetConfig("useVictoryRush", true) end
+        if key == "useVictoryRush" then return GetConfig("useVictoryRush", false) end  -- 临时关闭
         if key == "victoryRushThreshold" then return GetConfig("victoryRushThreshold", 40) end
         if key == "useSpellReflection" then return GetConfig("useSpellReflection", true) end
         if key == "spellReflectionCastPercent" then return GetConfig("spellReflectionCastPercent", 60) end
@@ -807,21 +807,26 @@ end
 -- 打断逻辑现在完全由 Interface.lua 的回调处理
 -- 这里不再定义任何打断回调，避免冲突
 
--- 胜利在望（优先级高于狂暴回复，因为恢复更多）
+-- 胜利在望 - 临时禁用（待明天修复）
 S.VictoryRush:callback(function(spell)
-    if not cfg.useVictoryRush then return false end
-    
-    -- 检查血量是否低于阈值
-    if player.healthpercent <= cfg.victoryRushThreshold then
-        if cfg.debug then
-            log(string.format("💚 [胜利在望] 血量: %d%% (阈值: %d%%)", 
-                math.floor(player.healthpercent), 
-                cfg.victoryRushThreshold))
-        end
-        return spell:cast(player)
+    -- 临时关闭，避免卡技能
+    -- 功能未开启（默认关闭）
+    if not cfg.useVictoryRush then
+        return
     end
     
-    return false
+    -- 血量高于阈值，跳过
+    if player.healthpercent > cfg.victoryRushThreshold then
+        return
+    end
+    
+    -- CD检查
+    if not spell:ready() then
+        return
+    end
+    
+    -- 尝试施法（Aurora会自动检查目标、buff等）
+    return spell:cast(target)
 end)
 
 -- 法术反射 - 智能逻辑：打断CD或关闭时才反射
@@ -1028,7 +1033,7 @@ end)
 
 -- 狂暴回复
 S.EnragingRegeneration:callback(function(spell)
-    if not cfg.useEnragingRegeneration then return false end
+    if not cfg.useEnragingRegeneration then return end
     if player.healthpercent <= cfg.enragingRegenerationThreshold then
         return spell:cast(player)
     end
@@ -1620,6 +1625,13 @@ local function SimCRotation()
     if player.dead then return false end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【生存技能】优先级最高，即使没有目标也要能用
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if UseHealthstone() then return true end
+    if UseHealingPotion() then return true end
+    if S.EnragingRegeneration:execute() then return true end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【自动目标切换】当目标不存在或超出范围时，自动切换
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     AutoTargetSwitch()
@@ -1688,11 +1700,10 @@ local function SimCRotation()
     -- 防御技能（反射在打断之后）
     if S.SpellReflection:execute() then return true end
     
-    -- 治疗
-    if UseHealthstone() then return true end
-    if UseHealingPotion() then return true end
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【生存技能 - 需要目标】胜利在望
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if S.VictoryRush:execute() then return true end
-    if S.EnragingRegeneration:execute() then return true end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 饰品和药水（受爆发开关控制）
@@ -2058,6 +2069,13 @@ local function SimCRotationV2()
     if player.dead then return false end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【生存技能】优先级最高，即使没有目标也要能用
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if UseHealthstone() then return true end
+    if UseHealingPotion() then return true end
+    if S.EnragingRegeneration:execute() then return true end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【自动目标切换】当目标不存在或超出范围时，自动切换
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     AutoTargetSwitch()
@@ -2126,11 +2144,10 @@ local function SimCRotationV2()
     -- 防御技能
     if S.SpellReflection:execute() then return true end
     
-    -- 治疗
-    if UseHealthstone() then return true end
-    if UseHealingPotion() then return true end
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【生存技能 - 需要目标】胜利在望
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if S.VictoryRush:execute() then return true end
-    if S.EnragingRegeneration:execute() then return true end
     
     -- 饰品和药水（受爆发开关控制）
     if ShouldUseCooldowns() then
@@ -2451,6 +2468,13 @@ local function Dps()
     if player.dead then return false end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【生存技能】优先级最高，即使没有目标也要能用
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if UseHealthstone() then return true end
+    if UseHealingPotion() then return true end
+    if S.EnragingRegeneration:execute() then return true end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【自动目标切换】当目标不存在或超出范围时，自动切换
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     AutoTargetSwitch()
@@ -2477,14 +2501,10 @@ local function Dps()
     
     -- 中断（由 Interface.lua 的回调自动处理，无需显式调用）
     
-    -- 治疗石（血量低时）
-    if UseHealthstone() then return true end
-    
-    -- 治疗药水（血量极低时）
-    if UseHealingPotion() then return true end
-    
-    -- 狂暴回复
-    if S.EnragingRegeneration:execute() then return true end
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【生存技能 - 需要目标】胜利在望
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if S.VictoryRush:execute() then return true end
     
     -- 💎 饰品系统（受爆发开关控制）
     -- 检查爆发开关是否开启
@@ -3008,30 +3028,30 @@ if Aurora.Macro then
             end
         })
         
-        -- 胜利在望
-        :Checkbox({
-            text = Aurora.texture(34428, 14) .. " 使用胜利在望",
-            key = "fury.useVictoryRush",
-            default = true,
-            tooltip = "自动使用胜利在望",
-            onChange = function(self, checked)
-                cfg.useVictoryRush = checked
-                print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
-            end
-        })
-        :Slider({
-            text = "生命值阈值 (%)",
-            key = "fury.victoryRush.threshold",
-            default = 40,
-            min = 0,
-            max = 100,
-            step = 5,
-            tooltip = "当生命值低于此百分比时自动使用胜利在望",
-            onChange = function(self, value)
-                cfg.victoryRushThreshold = value
-                print("|cff00ff00[TT狂战]|r 胜利在望阈值设置为: " .. value .. "%")
-            end
-        })
+        -- 胜利在望 - 临时移除GUI（待明天修复）
+        -- :Checkbox({
+        --     text = Aurora.texture(34428, 14) .. " 使用胜利在望",
+        --     key = "fury.victoryRush.enabled",
+        --     default = false,
+        --     tooltip = "自动使用胜利在望来恢复生命值\nCD好了就会自动使用",
+        --     onChange = function(self, checked)
+        --         cfg.useVictoryRush = checked
+        --         print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
+        --     end
+        -- })
+        -- :Slider({
+        --     text = "生命值阈值 (%)",
+        --     key = "fury.victoryRush.threshold",
+        --     default = 40,
+        --     min = 0,
+        --     max = 100,
+        --     step = 5,
+        --     tooltip = "当生命值低于此百分比时自动使用胜利在望",
+        --     onChange = function(self, value)
+        --         cfg.victoryRushThreshold = value
+        --         print("|cff00ff00[TT狂战]|r 胜利在望阈值设置为: " .. value .. "%")
+        --     end
+        -- })
         
         -- 法术反射
         :Checkbox({
