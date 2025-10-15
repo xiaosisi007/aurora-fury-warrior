@@ -56,6 +56,8 @@ if Aurora and Aurora.Config then
     Aurora.Config:SetDefault("fury.enragingRegenerationThreshold", 45)
     Aurora.Config:SetDefault("fury.useVictoryRush", true)
     Aurora.Config:SetDefault("fury.victoryRushThreshold", 40)
+    Aurora.Config:SetDefault("fury.useSpellReflection", true)
+    Aurora.Config:SetDefault("fury.spellReflectionCastPercent", 60)  -- 施法进度阈值
     
     -- 自动目标切换
     Aurora.Config:SetDefault("fury.autoTarget", true)  -- 自动目标切换开关
@@ -70,7 +72,7 @@ if Aurora and Aurora.Config then
     -- 中断设置
     Aurora.Config:SetDefault("fury.useInterrupt", true)
     Aurora.Config:SetDefault("fury.interruptWithList", true)
-    Aurora.Config:SetDefault("fury.interruptCastPercent", 40)  -- 施法进度百分比阈值
+    Aurora.Config:SetDefault("fury.interruptCastPercent", 60)  -- 施法进度百分比阈值
     Aurora.Config:SetDefault("fury.usePummel", true)
     Aurora.Config:SetDefault("fury.useStormBolt", true)
     Aurora.Config:SetDefault("fury.stormBoltEnemyCount", 1)
@@ -117,6 +119,8 @@ local cfg = setmetatable({}, {
         if key == "enragingRegenerationThreshold" then return GetConfig("enragingRegenerationThreshold", 45) end
         if key == "useVictoryRush" then return GetConfig("useVictoryRush", true) end
         if key == "victoryRushThreshold" then return GetConfig("victoryRushThreshold", 40) end
+        if key == "useSpellReflection" then return GetConfig("useSpellReflection", true) end
+        if key == "spellReflectionCastPercent" then return GetConfig("spellReflectionCastPercent", 60) end
         
         -- 自动目标切换
         if key == "autoTarget" then return GetConfig("autoTarget", true) end
@@ -139,7 +143,7 @@ local cfg = setmetatable({}, {
         -- 中断设置
         if key == "useInterrupt" then return GetConfig("useInterrupt", true) end
         if key == "interruptWithList" then return GetConfig("interruptWithList", true) end
-        if key == "interruptCastPercent" then return GetConfig("interruptCastPercent", 40) end
+        if key == "interruptCastPercent" then return GetConfig("interruptCastPercent", 60) end
         if key == "usePummel" then return GetConfig("usePummel", true) end
         if key == "useStormBolt" then return GetConfig("useStormBolt", true) end
         if key == "stormBoltEnemyCount" then return GetConfig("stormBoltEnemyCount", 1) end
@@ -782,6 +786,18 @@ local function ShouldFinishWithExecute()
 end
 
 ------------------------------------------------------------------------
+-- 法术反射逻辑
+------------------------------------------------------------------------
+-- 重要区分：
+-- 1. 反射是否启用 → 只受 cfg.useSpellReflection 控制（独立于打断总开关）
+-- 2. 打断是否会执行 → 需要检查打断总开关 + 打断技能状态（用于判断优先级）
+--
+-- 逻辑：
+-- - 关闭Interrupt按钮 → 打断不会执行 → 反射补位
+-- - 开启Interrupt按钮 + 打断技能可用 → 打断会执行 → 不反射，优先打断
+-- - 开启Interrupt按钮 + 打断技能CD → 打断不会执行 → 反射补位
+
+------------------------------------------------------------------------
 -- 技能回调 (简化版，按照 Aurora 文档建议)
 ------------------------------------------------------------------------
 
@@ -795,17 +811,219 @@ end
 S.VictoryRush:callback(function(spell)
     if not cfg.useVictoryRush then return false end
     
-    -- 检查技能CD是否好了
-    if not spell:ready() then return false end
-    
     -- 检查血量是否低于阈值
     if player.healthpercent <= cfg.victoryRushThreshold then
         if cfg.debug then
-            log(string.format("💚 胜利在望 - 血量: %d%% (阈值: %d%%)", 
-                math.floor(player.healthpercent), cfg.victoryRushThreshold))
+            log(string.format("💚 [胜利在望] 血量: %d%% (阈值: %d%%)", 
+                math.floor(player.healthpercent), 
+                cfg.victoryRushThreshold))
         end
         return spell:cast(player)
     end
+    
+    return false
+end)
+
+-- 法术反射 - 智能逻辑：打断CD或关闭时才反射
+S.SpellReflection:callback(function(spell)
+    if not cfg.useSpellReflection then 
+        if cfg.debug then log("🚫 [反射] 功能已禁用") end
+        return false 
+    end
+    
+    if not spell:ready() then 
+        if cfg.debug then log("🚫 [反射] CD未就绪") end
+        return false 
+    end
+    
+    -- 战斗时间延迟（避免刚开战就触发）
+    local combatTime = player.timecombat or 0
+    if combatTime < 3 then 
+        if cfg.debug then 
+            log(string.format("🚫 [反射] 战斗时间%.1f秒 < 3秒", combatTime))
+        end
+        return false 
+    end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 第1步：先找有没有需要反射的目标
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    local debugInfo = {}
+    local reflectTarget = Aurora.activeenemies:first(function(enemy)
+        -- 基础检查
+        if not enemy.exists or not enemy.alive or not enemy.enemy then 
+            return false 
+        end
+        
+        local dist = enemy.distanceto(player)
+        if dist > 40 then 
+            return false 
+        end
+        
+        -- 施法检查（怪物还在读条，说明队友没打断）
+        -- 严格检查：必须是字符串类型且不为空
+        local isCasting = enemy.casting
+        local isChanneling = enemy.channeling
+        
+        -- 类型和值检查
+        local hasCasting = (type(isCasting) == "string" and isCasting ~= "")
+        local hasChanneling = (type(isChanneling) == "string" and isChanneling ~= "")
+        
+        if not hasCasting and not hasChanneling then 
+            return false 
+        end
+        
+        -- 【关键】检查施法目标是否是玩家本人
+        local castTarget = enemy.casttarget
+        if not castTarget or not castTarget.exists then 
+            if cfg.debug then
+                table.insert(debugInfo, string.format("%s 无施法目标", enemy.name or "未知"))
+            end
+            return false 
+        end
+        
+        if not player.isunit(castTarget) then 
+            local targetName = castTarget.name or "未知"
+            if cfg.debug then
+                table.insert(debugInfo, string.format("%s 对%s施法（不是我）", enemy.name or "未知", targetName))
+            end
+            return false 
+        end
+        
+        -- 施法进度检查（严格：必须有有效的进度值）
+        local castPct = (hasCasting and enemy.castingpct) or (hasChanneling and enemy.channelingpct) or 0
+        
+        -- 验证进度值的有效性
+        if type(castPct) ~= "number" or castPct <= 0 then
+            if cfg.debug then
+                table.insert(debugInfo, string.format("%s 施法进度无效", enemy.name or "未知"))
+            end
+            return false
+        end
+        
+        local threshold = math.max(30, cfg.spellReflectionCastPercent or 60)  -- 最低30%
+        if castPct < threshold then 
+            if cfg.debug then
+                table.insert(debugInfo, string.format("%s 施法进度%.1f%% < %d%%", enemy.name or "未知", castPct, threshold))
+            end
+            return false 
+        end
+        
+        -- 找到符合条件的目标！
+        if cfg.debug then
+            local spellName = hasCasting and isCasting or isChanneling
+            log(string.format("✅ [反射目标] %s 对我施法: %s (进度%.1f%%)", 
+                enemy.name or "未知", spellName or "未知", castPct))
+        end
+        return true
+    end)
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 第2步：如果没找到反射目标，直接返回
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if not reflectTarget then
+        if cfg.debug and #debugInfo > 0 then
+            log("❌ [反射] 没有找到有效的反射目标:")
+            for _, info in ipairs(debugInfo) do
+                log("   • " .. info)
+            end
+        end
+        return false
+    end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 第3步：检查这个目标的读条进度是否达到打断阈值
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 重要：反射系统独立于打断总开关，只检查各个打断技能的状态
+    local isCasting = reflectTarget.casting
+    local castPct = isCasting and reflectTarget.castingpct or reflectTarget.channelingpct or 0
+    local interruptThreshold = cfg.interruptCastPercent or 60
+    local reflectThreshold = math.max(30, cfg.spellReflectionCastPercent or 60)
+    
+    -- 如果读条进度已达到打断阈值，检查打断系统是否会真的执行
+    if castPct >= interruptThreshold then
+        -- 🔍 关键逻辑：
+        -- 1. 反射是否启用 → 只受 cfg.useSpellReflection 控制（不受打断总开关影响）
+        -- 2. 打断是否会执行 → 需要检查打断总开关 + 打断技能状态（用于决定是否让打断优先）
+        
+        -- 检查打断系统总开关
+        local interruptSystemEnabled = ShouldUseInterrupt()
+        
+        if not interruptSystemEnabled then
+            -- 打断系统总开关关闭 → 打断不会执行 → 反射补位
+            if cfg.debug then
+                log(string.format("✅ [反射] 进度%.1f%%>=打断阈值%d%%，但打断系统已关闭", castPct, interruptThreshold))
+            end
+        else
+            -- 打断系统开启 → 检查各个打断技能是否【启用且就绪】
+            local pummelAvailable = cfg.usePummel and S.Pummel and S.Pummel:ready()
+            local stormBoltAvailable = cfg.useStormBolt and S.StormBolt and S.StormBolt:ready()
+            local shockwaveAvailable = cfg.useShockwave and S.Shockwave and S.Shockwave:ready()
+            
+            if pummelAvailable or stormBoltAvailable or shockwaveAvailable then
+                -- 打断系统开启 + 打断技能可用 → 打断会执行 → 不反射，优先打断
+                if cfg.debug then
+                    local available = {}
+                    if pummelAvailable then table.insert(available, "拳击") end
+                    if stormBoltAvailable then table.insert(available, "风暴之锤") end
+                    if shockwaveAvailable then table.insert(available, "震荡波") end
+                    log(string.format("🚫 [反射] 进度%.1f%%>=打断阈值%d%%，打断系统开启且技能可用(%s)，优先打断", 
+                        castPct, interruptThreshold, table.concat(available, ",")))
+                end
+                return false
+            else
+                -- 打断系统开启，但所有打断技能CD/关闭 → 打断不会执行 → 反射补位
+                if cfg.debug then
+                    log(string.format("✅ [反射] 进度%.1f%%>=打断阈值%d%%，但打断技能CD/关闭", castPct, interruptThreshold))
+                end
+            end
+        end
+    else
+        -- 读条进度未达到打断阈值，但达到反射阈值 → 直接用反射
+        if cfg.debug then
+            log(string.format("✅ [反射] 进度%.1f%%<打断阈值%d%%，但>=反射阈值%d%%，用反射补位", 
+                castPct, interruptThreshold, reflectThreshold))
+        end
+    end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 第4步：最终安全检查 - 在cast前再次验证目标状态
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 检查目标是否还存在且在施法
+    if not reflectTarget.exists or not reflectTarget.alive then
+        if cfg.debug then log("❌ [反射] 目标已消失或死亡") end
+        return false
+    end
+    
+    -- 再次检查施法状态（避免时间差导致状态改变）
+    local finalCasting = reflectTarget.casting
+    local finalChanneling = reflectTarget.channeling
+    local hasFinalCasting = (type(finalCasting) == "string" and finalCasting ~= "")
+    local hasFinalChanneling = (type(finalChanneling) == "string" and finalChanneling ~= "")
+    
+    if not hasFinalCasting and not hasFinalChanneling then
+        if cfg.debug then log("❌ [反射] 目标已停止施法") end
+        return false
+    end
+    
+    -- 再次检查施法目标
+    local finalCastTarget = reflectTarget.casttarget
+    if not finalCastTarget or not finalCastTarget.exists or not player.isunit(finalCastTarget) then
+        if cfg.debug then log("❌ [反射] 施法目标已改变") end
+        return false
+    end
+    
+    -- 所有检查通过，执行反射
+    local spellName = hasFinalCasting and finalCasting or finalChanneling
+    if cfg.debug then
+        log(string.format(
+            "🛡️ [反射执行] %s 对我施法: %s (进度%.1f%%)", 
+            reflectTarget.name or "未知",
+            spellName or "未知",
+            castPct
+        ))
+    end
+    return spell:cast(player)
 end)
 
 -- 狂暴回复
@@ -983,7 +1201,7 @@ local function TargetNeedsInterrupt()
     
     -- 施法进度检查（文档示例：target.castingpct > 50）
     local castPercent = isCasting and target.castingpct or target.channelingpct
-    local threshold = cfg.interruptCastPercent or 40
+    local threshold = cfg.interruptCastPercent or 60
     
     if castPercent and castPercent >= threshold then
         return true, spellId
@@ -1027,7 +1245,7 @@ local function FindInterruptTarget()
         
         -- 检查施法进度
         local castPct = enemy.castingpct or enemy.channelingpct or 0
-        if castPct < (cfg.interruptCastPercent or 40) then
+        if castPct < (cfg.interruptCastPercent or 60) then
             return false
         end
         
@@ -1067,7 +1285,7 @@ local function CountCastingEnemies()
             if isCasting and isInterruptible then
                 -- 检查施法进度是否达到阈值
                 local castPct = enemy.castingpct or 0
-                local minCastPct = cfg.interruptCastPercent or 40
+                local minCastPct = cfg.interruptCastPercent or 60
                 
                 if castPct >= minCastPct then
                     -- ✅ 检查列表（如果启用）
@@ -1459,8 +1677,16 @@ local function SimCRotation()
     end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 中断（由 Interface.lua 的回调自动处理，无需显式调用）
+    -- 【最高优先级】打断系统
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- execute() 会触发在 Rotation.lua 中定义的 callback
+    -- callback 中包含所有打断逻辑（开关检查、目标选择、列表检查等）
+    if S.Pummel:execute() then return true end
+    if S.StormBolt:execute() then return true end
+    if S.Shockwave:execute() then return true end
+    
+    -- 防御技能（反射在打断之后）
+    if S.SpellReflection:execute() then return true end
     
     -- 治疗
     if UseHealthstone() then return true end
@@ -1896,6 +2122,9 @@ local function SimCRotationV2()
     if S.Pummel:execute() then return true end
     if S.StormBolt:execute() then return true end
     if S.Shockwave:execute() then return true end
+    
+    -- 防御技能
+    if S.SpellReflection:execute() then return true end
     
     -- 治疗
     if UseHealthstone() then return true end
@@ -2784,7 +3013,7 @@ if Aurora.Macro then
             text = Aurora.texture(34428, 14) .. " 使用胜利在望",
             key = "fury.useVictoryRush",
             default = true,
-            tooltip = "自动使用胜利在望来恢复生命值",
+            tooltip = "自动使用胜利在望",
             onChange = function(self, checked)
                 cfg.useVictoryRush = checked
                 print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
@@ -2801,6 +3030,31 @@ if Aurora.Macro then
             onChange = function(self, value)
                 cfg.victoryRushThreshold = value
                 print("|cff00ff00[TT狂战]|r 胜利在望阈值设置为: " .. value .. "%")
+            end
+        })
+        
+        -- 法术反射
+        :Checkbox({
+            text = Aurora.texture(23920, 14) .. " 使用法术反射",
+            key = "fury.useSpellReflection",
+            default = true,
+            tooltip = "怪物对你施法时，且打断CD会自动反射",
+            onChange = function(self, checked)
+                cfg.useSpellReflection = checked
+                print("|cff00ff00[TT狂战]|r 法术反射已" .. (checked and "启用" or "禁用"))
+            end
+        })
+        :Slider({
+            text = "施法进度 (%)",
+            key = "fury.spellReflectionCastPercent",
+            default = 60,
+            min = 20,
+            max = 80,
+            step = 5,
+            tooltip = "怪物施法进度达到此值时才反射\n\n推荐值：60%\n避免过早使用浪费技能",
+            onChange = function(self, value)
+                cfg.spellReflectionCastPercent = value
+                print("|cff00ff00[TT狂战]|r 法术反射进度阈值设置为: " .. value .. "%")
             end
         })
         
@@ -2846,7 +3100,7 @@ if Aurora.Macro then
         :Slider({
             text = "施法进度 (%)",
             key = "fury.interrupt.castPercent",
-            default = 40,
+            default = 60,
             min = 20,
             max = 80,
             step = 5,
@@ -3538,7 +3792,7 @@ if Aurora.Macro then
                     print(string.format("引导进度: |cff00ff00%.1f%%|r (已用: %.2fs, 剩余: %.2fs)", castPercent, duration, remains))
                 end
                 
-                local threshold = cfg.interruptCastPercent or 40
+                local threshold = cfg.interruptCastPercent or 60
                 if castPercent >= threshold then
                     print(string.format("进度检查: |cff00ff00%.1f%% >= %d%% 允许打断|r", castPercent, threshold))
                 else
@@ -4299,7 +4553,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
         
         -- 检查阈值设置
         print("|cff00ffff打断阈值:|r")
-        print("  施法进度: |cff00ff00" .. (cfg.interruptCastPercent or 40) .. "%|r")
+        print("  施法进度: |cff00ff00" .. (cfg.interruptCastPercent or 60) .. "%|r")
         print("  风暴之锤读条怪数: |cff00ff00" .. (cfg.stormBoltEnemyCount or 1) .. "|r")
         print("  震荡波读条怪数: |cff00ff00" .. (cfg.shockwaveEnemyCount or 2) .. "|r")
         print(" ")

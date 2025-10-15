@@ -39,6 +39,7 @@ Aurora.SpellHandler.PopulateSpellbook({
         -- 辅助技能
         EnragingRegeneration = NewSpell(184364),
         VictoryRush = NewSpell(34428),  -- 胜利在望（回复30%生命值）
+        SpellReflection = NewSpell(23920), -- 法术反射（反射法术，25秒CD）
         BattleShout = NewSpell(6673),   -- 战斗怒吼（队友增益BUFF）
         
         -- 中断技能
@@ -88,6 +89,7 @@ Aurora.SpellHandler.PopulateSpellbook({
         Opportunist = 456120,            -- 机会主义者（触发BUFF）
         Bloodcraze = 393951,             -- 血腥疯狂（嗜血层数BUFF，ID正确）
         Bladestorm = 446035,             -- 剑刃风暴BUFF（用于检查是否在风暴中）
+        Victorious = 32216,              -- 胜利在望BUFF（击杀敌人后触发，20秒持续时间）
         
         -- Debuff
         ExecutionersWill = 457131,
