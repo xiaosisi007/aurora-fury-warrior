@@ -386,6 +386,24 @@ local function UseTrinket1()
         return false
     end
     
+    -- 特殊处理：跳过只能对队友使用的饰品（需要玩家手动使用）
+    -- 索·莉亚的究极秘术 (只能对其他队友使用，循环会跳过)
+    local friendOnlyTrinkets = {
+        [190958] = true,  -- 索·莉亚的究极秘术 ⭐正确ID
+        [219917] = true,  -- 索·莉亚的究极秘术（旧ID-史诗）
+        [219915] = true,  -- 索·莉亚的究极秘术（旧ID-普通）
+        [219916] = true,  -- 索·莉亚的究极秘术（旧ID-英雄）
+        [219918] = true,  -- 索·莉亚的究极秘术（旧ID-神话）
+    }
+    
+    if friendOnlyTrinkets[itemID] then
+        if cfg.debug then
+            local name = GetTrinketName(13) or "饰品1"
+            log("|cffffff00[跳过]|r 饰品1: " .. name .. " (ID: " .. itemID .. ") - 需要玩家手动对队友使用")
+        end
+        return false
+    end
+    
     -- 动态创建饰品对象
     local trinket = Aurora.ItemHandler.NewItem(itemID)
     if not trinket then
@@ -396,39 +414,39 @@ local function UseTrinket1()
     end
     
     -- 使用 Aurora ItemHandler 的智能检查
-    -- 对于引导类饰品，use()会自动处理引导过程
-    if trinket:usable(target) then  -- 使用target而不是player
-        trinket:use(target)  -- 对目标使用
+    -- 优先尝试对自己使用（增益类饰品）
+    if trinket:usable(player) then
+        local success = trinket:use(player)
         
-        -- 设置引导状态（防止被其他技能打断）
-        SetTrinketChanneling()
-        
-        -- 调试输出
-        if cfg.debug then
-            local name = GetTrinketName(13) or "饰品1"
-            log("|cff00ff00✓|r 使用饰品1: " .. name .. " (ID: " .. itemID .. ") [引导类]")
-        end
-        
-        return true
-    elseif trinket:usable(player) then  -- 如果对目标不可用，尝试对自己
-        trinket:use(player)
-        
-        -- 对自己使用的饰品通常是即时的，不需要引导保护
-        -- 但为了安全起见，也设置一个短暂的保护期
-        SetTrinketChanneling()
-        
-        if cfg.debug then
-            local name = GetTrinketName(13) or "饰品1"
-            log("|cff00ff00✓|r 使用饰品1: " .. name .. " (ID: " .. itemID .. ")")
-        end
-        
-        return true
-    else
-        if cfg.debug then
-            log("|cffffff00[提示]|r 饰品1不可用 (CD中或其他原因)")
+        if success then
+            SetTrinketChanneling()
+            
+            if cfg.debug then
+                local name = GetTrinketName(13) or "饰品1"
+                log("|cff00ff00✓|r 使用饰品1: " .. name .. " (ID: " .. itemID .. ")")
+            end
+            
+            return true
         end
     end
     
+    -- 备选：对当前目标使用（伤害类饰品）
+    if target and target.exists and trinket:usable(target) then
+        local success = trinket:use(target)
+        
+        if success then
+            SetTrinketChanneling()
+            
+            if cfg.debug then
+                local name = GetTrinketName(13) or "饰品1"
+                log("|cff00ff00✓|r 使用饰品1: " .. name .. " (ID: " .. itemID .. ") [对目标]")
+            end
+            
+            return true
+        end
+    end
+    
+    -- 静默失败，不影响循环
     return false
 end
 
@@ -462,6 +480,24 @@ local function UseTrinket2()
         return false
     end
     
+    -- 特殊处理：跳过只能对队友使用的饰品（需要玩家手动使用）
+    -- 索·莉亚的究极秘术 (只能对其他队友使用，循环会跳过)
+    local friendOnlyTrinkets = {
+        [190958] = true,  -- 索·莉亚的究极秘术 ⭐正确ID
+        [219917] = true,  -- 索·莉亚的究极秘术（旧ID-史诗）
+        [219915] = true,  -- 索·莉亚的究极秘术（旧ID-普通）
+        [219916] = true,  -- 索·莉亚的究极秘术（旧ID-英雄）
+        [219918] = true,  -- 索·莉亚的究极秘术（旧ID-神话）
+    }
+    
+    if friendOnlyTrinkets[itemID] then
+        if cfg.debug then
+            local name = GetTrinketName(14) or "饰品2"
+            log("|cffffff00[跳过]|r 饰品2: " .. name .. " (ID: " .. itemID .. ") - 需要玩家手动对队友使用")
+        end
+        return false
+    end
+    
     -- 动态创建饰品对象
     local trinket = Aurora.ItemHandler.NewItem(itemID)
     if not trinket then
@@ -472,39 +508,39 @@ local function UseTrinket2()
     end
     
     -- 使用 Aurora ItemHandler 的智能检查
-    -- 对于引导类饰品，use()会自动处理引导过程
-    if trinket:usable(target) then  -- 使用target而不是player
-        trinket:use(target)  -- 对目标使用
+    -- 优先尝试对自己使用（增益类饰品）
+    if trinket:usable(player) then
+        local success = trinket:use(player)
         
-        -- 设置引导状态（防止被其他技能打断）
-        SetTrinketChanneling()
-        
-        -- 调试输出
-        if cfg.debug then
-            local name = GetTrinketName(14) or "饰品2"
-            log("|cff00ff00✓|r 使用饰品2: " .. name .. " (ID: " .. itemID .. ") [引导类]")
-        end
-        
-        return true
-    elseif trinket:usable(player) then  -- 如果对目标不可用，尝试对自己
-        trinket:use(player)
-        
-        -- 对自己使用的饰品通常是即时的，不需要引导保护
-        -- 但为了安全起见，也设置一个短暂的保护期
-        SetTrinketChanneling()
-        
-        if cfg.debug then
-            local name = GetTrinketName(14) or "饰品2"
-            log("|cff00ff00✓|r 使用饰品2: " .. name .. " (ID: " .. itemID .. ")")
-        end
-        
-        return true
-    else
-        if cfg.debug then
-            log("|cffffff00[提示]|r 饰品2不可用 (CD中或其他原因)")
+        if success then
+            SetTrinketChanneling()
+            
+            if cfg.debug then
+                local name = GetTrinketName(14) or "饰品2"
+                log("|cff00ff00✓|r 使用饰品2: " .. name .. " (ID: " .. itemID .. ")")
+            end
+            
+            return true
         end
     end
     
+    -- 备选：对当前目标使用（伤害类饰品）
+    if target and target.exists and trinket:usable(target) then
+        local success = trinket:use(target)
+        
+        if success then
+            SetTrinketChanneling()
+            
+            if cfg.debug then
+                local name = GetTrinketName(14) or "饰品2"
+                log("|cff00ff00✓|r 使用饰品2: " .. name .. " (ID: " .. itemID .. ") [对目标]")
+            end
+            
+            return true
+        end
+    end
+    
+    -- 静默失败，不影响循环
     return false
 end
 
@@ -834,21 +870,21 @@ end
 -- 智能打断系统
 ------------------------------------------------------------------------
 
--- 检查Aurora打断开关状态（支持多种可能的Toggle名称）
+-- 检查打断开关状态
 local function IsInterruptEnabled()
     if not Aurora or not Aurora.Rotation then
         return true -- Aurora不存在时，默认启用
     end
     
-    -- 尝试多个可能的Toggle名称（按常用顺序）
-    local toggleNames = {
-        "Interrupt",        -- 最常用名称
-        "InterruptToggle",  -- 备选名称1
-        "Interrupts",       -- 备选名称2
-        "InterruptsToggle", -- 备选名称3
+    -- 尝试多个可能的Toggle名称
+    local possibleNames = {
+        "Interrupt",      -- 单数
+        "Interrupts",     -- 复数
+        "interrupt",      -- 小写
+        "interrupts",     -- 小写复数
     }
     
-    for _, name in ipairs(toggleNames) do
+    for _, name in ipairs(possibleNames) do
         local toggle = Aurora.Rotation[name]
         if toggle and type(toggle.GetValue) == "function" then
             local value = toggle:GetValue()
@@ -859,9 +895,9 @@ local function IsInterruptEnabled()
         end
     end
     
-    -- 如果找不到任何打断Toggle，默认启用
+    -- 如果找不到任何interrupt按钮，默认启用
     if cfg.debug then
-        log("⚠️ [打断开关] 未找到 Aurora 打断 Toggle，默认启用")
+        log("⚠️ [打断开关] 未找到任何Interrupt Toggle，默认启用")
     end
     return true
 end
@@ -2971,6 +3007,19 @@ if Aurora.Macro then
                 print("|cff00ff00[TT狂战]|r 剑刃风暴 TTD 阈值: " .. value .. "秒")
             end
         })
+        
+        :Text({ text = "", size = 10 })
+        :Header({ text = "调试选项" })
+        :Checkbox({
+            text = Aurora.texture(134332, 14) .. " 启用调试模式",
+            key = "fury.debug",
+            default = false,
+            tooltip = "开启后会在聊天框显示详细的循环信息\n\n包括:\n• 饰品使用/跳过信息\n• 技能使用决策\n• 打断系统状态\n\n注意: 会产生大量消息",
+            onChange = function(self, checked)
+                cfg.debug = checked
+                print("|cff00ff00[TT狂战]|r 调试模式已" .. (checked and "启用 ✅" or "禁用 ❌"))
+            end
+        })
     
     -- 天赋导入标签页
     gui:Tab("天赋导入")
@@ -3082,8 +3131,13 @@ if Aurora.Macro then
     -- print("|cff00ff00[TT狂战]|r GUI配置界面已加载")
     
     ------------------------------------------------------------------------
-    -- 状态框架 - 中断技能切换按钮
+    -- 状态框架 - 打断控制
     ------------------------------------------------------------------------
+    -- Aurora原生的Interrupt按钮应该已经存在，我们直接使用
+    -- 如果 /aurora toggle interrupt 不工作，可能是因为：
+    -- 1. 按钮名称不是 "Interrupt"
+    -- 2. 或者需要检查 Aurora.Rotation.Interrupts（复数）
+    -- 3. 或者检查其他可能的名称
     
     -- 添加风暴之锤切换按钮
     Aurora.Rotation.StormBoltToggle = Aurora:AddGlobalToggle({
@@ -3125,6 +3179,8 @@ if Aurora.Macro then
     })
     
     -- 设置初始值（从配置读取）
+    -- InterruptToggle 是 Aurora 原生的，不需要设置初始值
+    
     if Aurora.Rotation.StormBoltToggle then
         Aurora.Rotation.StormBoltToggle:SetValue(cfg.useStormBolt)
     end
@@ -3933,6 +3989,7 @@ end)
 -- 状态框架 - 自动目标切换按钮
 ------------------------------------------------------------------------
 -- 使用Aurora全局状态框架添加可视化切换按钮
+-- 注意：Interrupt 按钮由 Aurora 框架自动创建，无需手动添加
 
 -- 添加自动目标切换按钮到状态栏
 Aurora.Rotation.AutoTargetToggle = Aurora:AddGlobalToggle({
@@ -3980,19 +4037,12 @@ SLASH_FURYTARGET2 = "/狂怒"
 
 -- 命令处理函数
 SlashCmdList["FURYTARGET"] = function(msg)
-    -- 【调试】立即输出，确认函数被调用
-    print("━━━━━━━━━━━━━━━━━━━━━━━━")
-    print("[调试] Slash命令被调用")
-    print("[调试] 原始输入 msg = " .. tostring(msg))
-    
-    -- 先测试是否能执行
+    -- 处理空命令
     if not msg or msg == "" then
         msg = "help"
     end
     
     local command = string.lower(strtrim(msg))
-    print("[调试] 处理后的 command = " .. tostring(command))
-    print("━━━━━━━━━━━━━━━━━━━━━━━━")
     
     -- /fury test - 测试命令是否工作
     if command == "test" then
@@ -4133,23 +4183,52 @@ SlashCmdList["FURYTARGET"] = function(msg)
         return
     end
     
+    -- /fury toggles - 列出所有Aurora Toggle（调试用）
+    if command == "toggles" or command == "list" then
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        print("|cff00ff00[TT狂战]|r Aurora Toggle 列表")
+        print(" ")
+        
+        if Aurora and Aurora.Rotation then
+            print("|cff00ffffAurora.Rotation 中的所有对象:|r")
+            local count = 0
+            for key, value in pairs(Aurora.Rotation) do
+                if type(value) == "table" and type(value.GetValue) == "function" then
+                    local val = value:GetValue()
+                    print(string.format("  |cff00ff00%s|r = %s (类型: Toggle)", key, tostring(val)))
+                    count = count + 1
+                elseif type(value) ~= "function" then
+                    print(string.format("  |cff808080%s|r (类型: %s)", key, type(value)))
+                end
+            end
+            print(" ")
+            print(string.format("找到 |cff00ff00%d|r 个 Toggle", count))
+        else
+            print("|cffff0000Aurora.Rotation 不存在|r")
+        end
+        
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        return
+    end
+    
     -- /fury interrupt 或 /fury 打断 - 查看打断状态
     if command == "interrupt" or command == "打断" or command == "interrupt status" then
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
         print("|cff00ff00[TT狂战]|r 打断系统状态")
         print(" ")
         
-        -- 检查Aurora Cooldown框架状态（支持多种Toggle名称）
-        local cooldownEnabled = true
+        -- 检查打断总开关状态
+        local interruptEnabled = true
         local toggleFound = false
         local toggleName = "未知"
         
         if Aurora and Aurora.Rotation then
-            local toggleNames = {"InterruptToggle", "Interrupts", "InterruptsToggle"}
-            for _, name in ipairs(toggleNames) do
+            -- 尝试多个可能的Toggle名称
+            local possibleNames = {"Interrupt", "Interrupts", "interrupt", "interrupts"}
+            for _, name in ipairs(possibleNames) do
                 local toggle = Aurora.Rotation[name]
                 if toggle and type(toggle.GetValue) == "function" then
-                    cooldownEnabled = toggle:GetValue()
+                    interruptEnabled = toggle:GetValue()
                     toggleFound = true
                     toggleName = name
                     break
@@ -4159,14 +4238,16 @@ SlashCmdList["FURYTARGET"] = function(msg)
         
         print("|cff00ffffAurora状态栏 - Interrupt:|r")
         if toggleFound then
-            if cooldownEnabled then
-                print("  |cff00ff00✅ 已启用|r (Toggle: " .. toggleName .. ")")
+            if interruptEnabled then
+                print(string.format("  |cff00ff00✅ 已启用|r (Toggle: %s)", toggleName))
+                print("  |cff808080可用命令: /aurora toggle interrupt|r")
             else
-                print("  |cffff0000❌ 已禁用 (所有打断失效)|r")
+                print(string.format("  |cffff0000❌ 已禁用 (所有打断失效)|r (Toggle: %s)", toggleName))
+                print("  |cff808080可用命令: /aurora toggle interrupt|r")
             end
         else
-            print("  |cffff8800⚠ 未找到打断Toggle，默认启用|r")
-            print("  |cff808080提示: 某些Aurora版本可能不支持|r")
+            print("  |cffff8800⚠ 未找到任何Interrupt Toggle|r")
+            print("  |cff808080提示: 运行 /fury toggles 查看所有可用Toggle|r")
         end
         print(" ")
         
@@ -4224,10 +4305,10 @@ SlashCmdList["FURYTARGET"] = function(msg)
         print(" ")
         
         -- 最终状态
-        if cooldownEnabled and (usePummel or useStormBolt or useShockwave) then
+        if interruptEnabled and (usePummel or useStormBolt or useShockwave) then
             print("|cff00ff00✅ 打断系统正常工作|r")
-        elseif not cooldownEnabled then
-            print("|cffff0000❌ 打断系统已禁用 (Aurora状态栏关闭)|r")
+        elseif not interruptEnabled then
+            print("|cffff0000❌ 打断系统已禁用 (Interrupt按钮关闭)|r")
         else
             print("|cffff0000❌ 所有打断技能都已关闭|r")
         end
@@ -4249,6 +4330,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
         print(" ")
         print("|cff00ffff打断系统:|r")
         print("  |cff00ff00/fury interrupt|r - 查看打断状态")
+        print("  |cff00ff00/fury toggles|r - 列出所有Aurora Toggle（调试）")
         print("  |cff00ff00/fury debug|r - 调试打断开关")
         print(" ")
         print("|cff00ffff其他命令:|r")
