@@ -2,13 +2,23 @@
 -- 本地化系统 (Localization System)
 ------------------------------------------------------------------------
 
--- 自动检测客户端语言
+-- 检测客户端语言
 local clientLocale = GetLocale()
 local isZhCN = (clientLocale == "zhCN" or clientLocale == "zhTW")
 
 -- 本地化字符串表
 local L = {}
+
+-- 基础文本
 L.RoutineName = isZhCN and "TT狂战" or "TT Fury"
+L.Welcome = isZhCN and "欢迎" or "Welcome"
+L.Updated = isZhCN and "已更新至" or "Updated to"
+L.Enabled = isZhCN and "启用" or "Enabled"
+L.Disabled = isZhCN and "禁用" or "Disabled"
+L.On = isZhCN and "开启" or "On"
+L.Off = isZhCN and "关闭" or "Off"
+
+-- GUI标签页
 L.TabIntro = isZhCN and "简介" or "Introduction"
 L.TabBurst = isZhCN and "爆发技能" or "Burst Skills"
 L.TabAuxiliary = isZhCN and "辅助技能" or "Auxiliary Skills"
@@ -16,93 +26,107 @@ L.TabInterrupt = isZhCN and "打断" or "Interrupt"
 L.TabPotions = isZhCN and "药水饰品" or "Potions & Trinkets"
 L.TabTalents = isZhCN and "天赋导入" or "Talent Import"
 
+-- 简介页面
+L.IntroAbout = isZhCN and "关于本循环" or "About This Routine"
 L.IntroTarget = isZhCN and "关于目标" or "About Target"
-L.IntroTargetText = "Modules→Auto Target→Auto Target→Highest→OnlyDead"
+L.IntroTargetText = isZhCN and "Modules→Auto Target→Auto Target→Highest→OnlyDead" or "Modules→Auto Target→Auto Target→Highest→OnlyDead"
 L.IntroTalents = isZhCN and "关于天赋" or "About Talents"
 L.IntroTalentsText = isZhCN and "目前只支持屠戮天赋" or "Currently only supports Slaughter talent"
 L.IntroQueue = isZhCN and "关于技能插入" or "About Skill Queue"
 L.IntroQueueText = isZhCN and "我们使用Aurora原生SmartQueue" or "We use Aurora's native SmartQueue"
 
--- Headers
+-- 爆发技能
 L.BurstHeader = isZhCN and "爆发技能管理" or "Burst Skills Management"
-L.DefensiveSkills = isZhCN and "防护技能" or "Defensive Skills"
-L.InterruptHeader = isZhCN and "智能打断系统" or "Smart Interrupt System"
-L.TalentsHeader = isZhCN and "天赋配置导入" or "Talent Configuration Import"
-L.TrinketHeader = isZhCN and "主动饰品" or "Active Trinkets"
-L.PotionsConsumables = isZhCN and "药水和消耗品" or "Potions & Consumables"
-
--- Trinkets
-L.EnableTrinket1 = isZhCN and "启用饰品1" or "Enable Trinket 1"
-L.EnableTrinket2 = isZhCN and "启用饰品2" or "Enable Trinket 2"
-L.TrinketWithBurst = isZhCN and "饰品跟随爆发使用" or "Use Trinkets with Burst"
-L.Trinket1Tooltip = isZhCN and "自动使用第一个饰品槽位的主动饰品" or "Auto-use active trinket in first slot"
-L.Trinket2Tooltip = isZhCN and "自动使用第二个饰品槽位的主动饰品" or "Auto-use active trinket in second slot"
-L.TrinketWithBurstTooltip = isZhCN and "勾选: 仅在爆发技能启用时使用饰品\n不勾选: 战斗中CD好就用" or "Checked: Use only when burst active\nUnchecked: Use on CD"
-
--- Potions
-L.EnableHealthstone = isZhCN and "启用治疗石" or "Enable Healthstone"
-L.HealthstoneTooltip = isZhCN and "自动使用治疗石恢复生命值" or "Auto-use healthstone to restore health"
-L.HealthstoneThreshold = isZhCN and "治疗石血量阈值 (%)" or "Healthstone Health Threshold (%)"
-L.HealthstoneThresholdTooltip = isZhCN and "当生命值低于此百分比时自动使用治疗石" or "Auto-use when health below this %"
-
-L.EnableHealingPotion = isZhCN and "启用治疗药水" or "Enable Healing Potion"
-L.HealingPotionTooltip = isZhCN and "自动使用阿加治疗药水恢复生命值" or "Auto-use healing potion to restore health"
-L.HealingPotionThreshold = isZhCN and "治疗药水血量阈值 (%)" or "Healing Potion Health Threshold (%)"
-L.HealingPotionThresholdTooltip = isZhCN and "当生命值低于此百分比时自动使用阿加治疗药水\n按品质依次尝试: 史诗 > 稀有 > 优秀" or "Auto-use when health below this %\nTries by quality: Epic > Rare > Uncommon"
-
-L.EnableCombatPotion = isZhCN and "启用爆发药水" or "Enable Combat Potion"
-L.CombatPotionTooltip = isZhCN and "自动使用爆发药水增强输出" or "Auto-use combat potion to boost damage"
-L.CombatPotionWithBurst = isZhCN and "爆发药水跟随爆发技能" or "Combat Potion with Burst"
-L.CombatPotionWithBurstTooltip = isZhCN and "勾选: 仅在爆发技能启用时使用爆发药水\n不勾选: 战斗中CD好就用" or "Checked: Use only when burst active\nUnchecked: Use on CD"
-
--- Auxiliary Skills
-L.UseEnragingRegen = isZhCN and "使用狂暴回复" or "Use Enraging Regeneration"
-L.EnragingRegenTooltip = isZhCN and "自动使用狂暴回复来恢复生命值" or "Auto-use to restore health"
-L.UseVictoryRush = isZhCN and "使用胜利在望" or "Use Victory Rush"
-L.VictoryRushTooltip = isZhCN and "自动使用胜利在望来恢复生命值" or "Auto-use to restore health"
-L.HealthThreshold = isZhCN and "生命值阈值 (%)" or "Health Threshold (%)"
-L.UseSpellReflection = isZhCN and "使用法术反射" or "Use Spell Reflection"
-L.SpellReflectionTooltip = isZhCN and "怪物对你施法时，且打断CD会自动反射" or "Auto-reflect when enemy casts on you and interrupts on CD"
-L.CastProgress = isZhCN and "施法进度 (%)" or "Cast Progress (%)"
-L.SpellReflectionCastTooltip = isZhCN and "怪物施法进度 ≥ 此值才反射\n推荐: 60% 避免过早使用浪费技能" or "Only reflect when cast ≥ this %\nRecommended: 60%"
-L.WhirlwindRange = isZhCN and "旋风斩范围" or "Whirlwind Range"
-L.ShowWhirlwindRange = isZhCN and "显示旋风斩8码范围圈" or "Show Whirlwind 8-yard range circle"
-L.RangeOpacity = isZhCN and "圆圈透明度" or "Circle Opacity"
-
--- Interrupt
-L.UseAuroraList = isZhCN and "使用 Aurora 列表" or "Use Aurora List"
-L.AuroraListTooltip = isZhCN and "启用：只打断列表中的技能\n禁用：打断所有可打断技能\n\n💡 打断功能受Cooldown框架控制" or "Enabled: Only interrupt spells in list\nDisabled: Interrupt all interruptible spells\n\n💡 Controlled by Cooldown framework"
-L.InterruptCastProgress = isZhCN and "施法进度 (%)" or "Cast Progress (%)"
-L.InterruptCastTooltip = isZhCN and "怪物施法进度 ≥ 此值才打断" or "Only interrupt when cast ≥ this %"
-L.UsePummel = isZhCN and "使用拳击" or "Use Pummel"
-L.PummelTooltip = isZhCN and "主要打断技能，15秒CD，15码范围" or "Main interrupt, 15s CD, 15yd range"
-L.UseStormBolt = isZhCN and "使用风暴之锤" or "Use Storm Bolt"
-L.StormBoltTooltip = isZhCN and "远程打断，30秒CD，40码范围\n读条怪物数量 ≥ 设定值时使用" or "Ranged interrupt, 30s CD, 40yd range\nUse when casting enemies ≥ threshold"
-L.UseShockwave = isZhCN and "使用震荡波" or "Use Shockwave"
-L.ShockwaveTooltip = isZhCN and "AOE打断，40秒CD，10码范围\n读条怪物数量 ≥ 设定值时使用" or "AOE interrupt, 40s CD, 10yd range\nUse when casting enemies ≥ threshold"
-L.CastingEnemies = isZhCN and "读条怪物数量" or "Casting Enemies"
-
--- Burst Skills
-L.ReserveBurst = isZhCN and "预留爆发" or "Reserve Burst"
-L.ReserveBurstTooltip = isZhCN and "AOE小怪只剩1-2只时不使用爆发技能\n\n作用:\n- 避免在残血小怪上浪费大技能CD\n- 保留爆发留给Boss或下一波小怪\n\n适用场景:\n- 大秘境(M+)多波次小怪\n- 需要合理分配CD的战斗\n\n建议: 开启" or "Don't use burst on 1-2 remaining enemies\n\nBenefits:\n- Avoid wasting CDs on low-HP mobs\n- Save burst for Boss or next pack\n\nUse cases:\n- M+ multi-pack encounters\n- Fights requiring CD management\n\nRecommended: ON"
+L.BurstReserve = isZhCN and "预留爆发" or "Reserve Burst"
+L.BurstReserveTooltip = isZhCN and "在小怪群（≤2个敌人）时不使用爆发技能\n但在Boss战中始终使用\n建议在大秘境中启用" or "Don't use burst skills on small packs (≤2 enemies)\nAlways use on Boss fights\nRecommended for M+ dungeons"
 L.UseRecklessness = isZhCN and "使用鲁莽" or "Use Recklessness"
-L.RecklessnessTooltip = isZhCN and "1分钟CD，大幅提升暴击率\n\n强力爆发技能，建议开启" or "1min CD, greatly increases crit rate\n\nPowerful burst, recommended ON"
+L.RecklessnessTooltip = isZhCN and "1分钟CD爆发技能，提升暴击几率" or "1-min CD burst skill, increases crit chance"
 L.UseAvatar = isZhCN and "使用化身" or "Use Avatar"
-L.AvatarTooltip = isZhCN and "1分30秒CD，显著提升伤害\n\n强力爆发技能，建议开启" or "1.5min CD, significantly boosts damage\n\nPowerful burst, recommended ON"
+L.AvatarTooltip = isZhCN and "1分30秒CD爆发技能，显著提升伤害" or "1.5-min CD burst skill, significantly increases damage"
 L.UseBladestorm = isZhCN and "使用剑刃风暴" or "Use Bladestorm"
-L.BladestormTooltip = isZhCN and "1分30秒CD，AOE爆发\n\n多目标必开，建议启用" or "1.5min CD, AOE burst\n\nEssential for multi-target, recommended ON"
+L.BladestormTooltip = isZhCN and "1分30秒CD AOE爆发，多目标必开" or "1.5-min CD AOE burst, essential for multi-target"
 L.UseThunderousRoar = isZhCN and "使用雷霆咆哮" or "Use Thunderous Roar"
 L.ThunderousRoarTooltip = isZhCN and "强力AOE爆发技能" or "Powerful AOE burst skill"
-L.TTDThreshold = isZhCN and "TTD阈值 (秒)" or "TTD Threshold (sec)"
-L.TTDTooltipGeneric = isZhCN and "目标预计存活时间 ≥ 此值才使用" or "Only use when target TTD ≥ this value"
+L.TTDThreshold = isZhCN and "TTD阈值 (秒)" or "TTD Threshold (seconds)"
+L.TTDTooltip = isZhCN and "目标预计存活时间 ≥ 此值才使用" or "Only use when target time-to-die ≥ this value"
 
--- Talents
+-- 辅助技能
+L.AuxiliaryHeader = isZhCN and "生存与辅助技能" or "Survival & Auxiliary Skills"
+L.UseEnragingRegeneration = isZhCN and "使用狂暴回复" or "Use Enraging Regeneration"
+L.EnragingRegenerationTooltip = isZhCN and "生命值低于阈值时自动使用狂暴回复" or "Auto-use when health below threshold"
+L.UseVictoryRush = isZhCN and "使用胜利在望" or "Use Victory Rush"
+L.VictoryRushTooltip = isZhCN and "自动使用胜利在望来恢复生命值" or "Auto-use Victory Rush to restore health"
+L.HealthThreshold = isZhCN and "生命值阈值 (%)" or "Health Threshold (%)"
+L.UseSpellReflection = isZhCN and "使用法术反射" or "Use Spell Reflection"
+L.SpellReflectionTooltip = isZhCN and "怪物对你施法时，且打断CD会自动反射" or "Auto-reflect when enemy casts on you and interrupts are on CD"
+L.CastProgress = isZhCN and "施法进度 (%)" or "Cast Progress (%)"
+L.CastProgressTooltip = isZhCN and "怪物施法进度 ≥ 此值才反射\n推荐: 60% 避免过早使用浪费技能" or "Only reflect when enemy cast progress ≥ this value\nRecommended: 60% to avoid wasting the skill"
+L.WhirlwindRange = isZhCN and "旋风斩范围" or "Whirlwind Range"
+L.WhirlwindRangeTooltip = isZhCN and "显示旋风斩8码范围圈" or "Show Whirlwind 8-yard range circle"
+
+-- 打断
+L.InterruptHeader = isZhCN and "智能打断系统" or "Smart Interrupt System"
+L.UseAuroraList = isZhCN and "使用 Aurora 列表" or "Use Aurora List"
+L.AuroraListTooltip = isZhCN and "只打断 Aurora 列表中的技能\n关闭则打断所有可打断技能" or "Only interrupt spells in Aurora list\nDisable to interrupt all interruptible spells"
+L.InterruptCastProgress = isZhCN and "施法进度 (%)" or "Cast Progress (%)"
+L.InterruptCastProgressTooltip = isZhCN and "怪物施法进度 ≥ 此值才打断" or "Only interrupt when cast progress ≥ this value"
+L.UsePummel = isZhCN and "使用拳击" or "Use Pummel"
+L.PummelTooltip = isZhCN and "主要打断技能，15秒CD，15码范围" or "Main interrupt, 15s CD, 15 yard range"
+L.UseStormBolt = isZhCN and "使用风暴之锤" or "Use Storm Bolt"
+L.StormBoltTooltip = isZhCN and "远程打断，30秒CD，40码范围\n读条怪物数量 ≥ 设定值时使用" or "Ranged interrupt, 30s CD, 40 yard range\nUse when casting enemies ≥ threshold"
+L.UseShockwave = isZhCN and "使用震荡波" or "Use Shockwave"
+L.ShockwaveTooltip = isZhCN and "AOE打断，40秒CD，10码范围\n读条怪物数量 ≥ 设定值时使用" or "AOE interrupt, 40s CD, 10 yard range\nUse when casting enemies ≥ threshold"
+L.EnemyCountThreshold = isZhCN and "读条怪物数量" or "Casting Enemies"
+
+-- 药水饰品
+L.PotionsHeader = isZhCN and "药水与饰品设置" or "Potions & Trinkets Settings"
+L.UseHealthstone = isZhCN and "使用治疗石" or "Use Healthstone"
+L.HealthstoneTooltip = isZhCN and "生命值低于阈值时自动使用治疗石" or "Auto-use when health below threshold"
+L.UseHealingPotion = isZhCN and "使用治疗药水" or "Use Healing Potion"
+L.HealingPotionTooltip = isZhCN and "生命值低于阈值时自动使用治疗药水\n优先: 焕生 → 阿加" or "Auto-use when health below threshold\nPriority: Algari Rejuvenation → Algari Healing"
+L.UseCombatPotion = isZhCN and "使用爆发药水" or "Use Combat Potion"
+L.CombatPotionTooltip = isZhCN and "跟随大技能使用爆发药水" or "Use combat potion with burst skills"
+L.UseTrinket = isZhCN and "使用饰品" or "Use Trinket"
+L.TrinketTooltip = isZhCN and "自动使用饰品" or "Auto-use trinket"
+L.WithCooldowns = isZhCN and "跟随爆发" or "With Burst"
+L.WithCooldownsTooltip = isZhCN and "跟随大技能一起使用" or "Use together with burst skills"
+
+-- 天赋导入
+L.TalentsHeader = isZhCN and "天赋配置导入" or "Talent Configuration Import"
 L.TalentSlaughter = isZhCN and "大米屠戮天赋" or "M+ Slaughter Talent"
-L.TalentSlaughterTooltip = isZhCN and "点击弹出天赋代码窗口\n适用场景：大秘境M+ / 团本AOE" or "Click to show talent code\nFor: M+ / Raid AOE"
-L.TalentCopyInst = isZhCN and "请按 Ctrl+C 复制天赋代码" or "Press Ctrl+C to copy talent code"
-L.TalentPasteInst = isZhCN and "然后在游戏中打开天赋面板，点击左下角「导入」按钮，粘贴代码即可导入" or "Then open talent panel, click 'Import' at bottom left, and paste"
+L.TalentSlaughterTooltip = isZhCN and "点击弹出天赋代码窗口\n适用场景：大秘境M+ / 团本AOE" or "Click to show talent code\nSuitable for: M+ / Raid AOE"
+L.TalentCopy = isZhCN and "请按 Ctrl+C 复制天赋代码" or "Press Ctrl+C to copy talent code"
+L.TalentPaste = isZhCN and "然后在游戏中打开天赋面板，点击左下角「导入」按钮，粘贴代码即可导入" or "Then open talent panel in-game, click 'Import' button at bottom left, and paste the code"
 
--- Toast
+-- 药水饰品 - 具体选项
+L.TrinketHeader = isZhCN and "主动饰品" or "Active Trinkets"
+L.EnableTrinket1 = isZhCN and "启用饰品1" or "Enable Trinket 1"
+L.EnableTrinket2 = isZhCN and "启用饰品2" or "Enable Trinket 2"
+L.Trinket1Tooltip = isZhCN and "自动使用第一个饰品槽位的主动饰品" or "Auto-use active trinket in slot 1"
+L.Trinket2Tooltip = isZhCN and "自动使用第二个饰品槽位的主动饰品" or "Auto-use active trinket in slot 2"
+L.TrinketWithBurst = isZhCN and "饰品跟随爆发使用" or "Use Trinkets with Burst"
+L.TrinketWithBurstTooltip = isZhCN and "勾选: 仅在爆发技能启用时使用饰品\n不勾选: 战斗中CD好就用" or "Checked: Use only when burst skills active\nUnchecked: Use on CD in combat"
+L.PotionsConsumables = isZhCN and "药水和消耗品" or "Potions & Consumables"
+L.HealthstoneThresholdText = isZhCN and "治疗石血量阈值 (%)" or "Healthstone Health Threshold (%)"
+L.HealthstoneThresholdTooltip = isZhCN and "当生命值低于此百分比时自动使用治疗石" or "Auto-use healthstone when health below this percentage"
+L.HealingPotionThresholdText = isZhCN and "治疗药水血量阈值 (%)" or "Healing Potion Health Threshold (%)"
+L.HealingPotionThresholdTooltip = isZhCN and "当生命值低于此百分比时自动使用阿加治疗药水\n按品质依次尝试: 史诗 > 稀有 > 优秀" or "Auto-use healing potion when health below this percentage\nTries by quality: Epic > Rare > Uncommon"
+L.CombatPotionWithBurst = isZhCN and "爆发药水跟随爆发技能" or "Combat Potion with Burst"
+L.CombatPotionWithBurstTooltip = isZhCN and "勾选: 仅在爆发技能启用时使用爆发药水\n不勾选: 战斗中CD好就用" or "Checked: Use only when burst skills active\nUnchecked: Use on CD in combat"
+
+-- 辅助技能 - 具体选项
+L.DefensiveSkills = isZhCN and "防护技能" or "Defensive Skills"
+
+-- 打印消息
+L.PrintEnabled = isZhCN and "已启用" or "Enabled"
+L.PrintDisabled = isZhCN and "已禁用" or "Disabled"
+L.PrintThreshold = isZhCN and "阈值设置为" or "Threshold set to"
+L.PrintMode = isZhCN and "模式" or "Mode"
+L.PrintWithBurst = isZhCN and "跟随爆发" or "With Burst"
+L.PrintOnCD = isZhCN and "CD好就用" or "On CD"
+L.PrintWithBurstSkills = isZhCN and "跟随爆发技能" or "With Burst Skills"
+
+-- Toast通知
 L.ToastWelcome = isZhCN and "欢迎, %s! 输入 /fury help 查看命令" or "Welcome, %s! Type /fury help for commands"
 L.ToastUpdate = isZhCN and "优化：性能提升 | 添加焕生治疗药水" or "Optimized: Performance boost | Added Algari Rejuvenation Potion"
 
@@ -645,9 +669,6 @@ local function ShouldInterrupt(unit)
             -- 检查技能是否在中断列表中
             for _, interruptSpellId in ipairs(Aurora.Lists.InterruptSpells) do
                 if spellId == interruptSpellId then
-                    if cfg.debug then
-                        log(string.format("检测到需要中断的技能: %d", spellId))
-                    end
                     return true
                 end
             end
@@ -2795,402 +2816,402 @@ if Aurora.Macro then
             width = 500
         })
     
-        :Tab(L.TabPotions)
-        :Header({ text = L.TrinketHeader })
+        :Tab("药品/饰品")
+        :Header({ text = "主动饰品" })
         :Checkbox({
-            text = L.EnableTrinket1,
+            text = "启用饰品1",
             key = "fury.trinket1.enabled",
             default = true,
-            tooltip = L.Trinket1Tooltip,
+            tooltip = "自动使用第一个饰品槽位的主动饰品",
             onChange = function(self, checked)
                 cfg.useTrinket1 = checked
                 Aurora.Config:Write("fury.trinket1.enabled", checked)
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.EnableTrinket1 .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 饰品1已" .. (checked and "启用" or "禁用"))
             end
         })
         :Checkbox({
-            text = L.EnableTrinket2,
+            text = "启用饰品2",
             key = "fury.trinket2.enabled",
             default = true,
-            tooltip = L.Trinket2Tooltip,
+            tooltip = "自动使用第二个饰品槽位的主动饰品",
             onChange = function(self, checked)
                 cfg.useTrinket2 = checked
                 Aurora.Config:Write("fury.trinket2.enabled", checked)
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.EnableTrinket2 .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 饰品2已" .. (checked and "启用" or "禁用"))
             end
         })
         :Checkbox({
-            text = L.TrinketWithBurst,
+            text = "饰品跟随爆发使用",
             key = "fury.trinket1.withCooldowns",
             default = true,
-            tooltip = L.TrinketWithBurstTooltip,
+            tooltip = "勾选: 仅在爆发技能启用时使用饰品\n不勾选: 战斗中CD好就用",
             onChange = function(self, checked)
                 cfg.trinket1WithCooldowns = checked
                 cfg.trinket2WithCooldowns = checked
                 Aurora.Config:Write("fury.trinket1.withCooldowns", checked)
                 Aurora.Config:Write("fury.trinket2.withCooldowns", checked)
-                local mode = checked and (isZhCN and "跟随爆发" or "With Burst") or (isZhCN and "CD好就用" or "On CD")
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.TrinketWithBurst .. ": " .. mode)
+                local mode = checked and "跟随爆发" or "CD好就用"
+                print("|cff00ff00[TT狂战]|r 饰品模式: " .. mode)
             end
         })
         :Text({ text = "", size = 8 })
-        :Header({ text = L.PotionsConsumables })
+        :Header({ text = "药水和消耗品" })
         :Checkbox({
-            text = L.EnableHealthstone,
+            text = "启用治疗石",
             key = "fury.healthstone.enabled",
             default = true,
-            tooltip = L.HealthstoneTooltip,
+            tooltip = "自动使用治疗石恢复生命值",
             onChange = function(self, checked)
                 cfg.useHealthstone = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.EnableHealthstone .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 治疗石已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.HealthstoneThreshold,
+            text = "治疗石血量阈值 (%)",
             key = "fury.healthstone.threshold",
             min = 0,
             max = 100,
             step = 5,
             default = 40,
-            tooltip = L.HealthstoneThresholdTooltip,
+            tooltip = "当生命值低于此百分比时自动使用治疗石",
             onChange = function(self, value)
                 cfg.healthstoneThreshold = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.HealthstoneThreshold .. ": " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 治疗石阈值设置为: " .. value .. "%")
             end
         })
         :Checkbox({
-            text = L.EnableHealingPotion,
+            text = "启用治疗药水",
             key = "fury.healingPotion.enabled",
             default = true,
-            tooltip = L.HealingPotionTooltip,
+            tooltip = "自动使用阿加治疗药水恢复生命值",
             onChange = function(self, checked)
                 cfg.useHealingPotion = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.EnableHealingPotion .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 治疗药水已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.HealingPotionThreshold,
+            text = "治疗药水血量阈值 (%)",
             key = "fury.healingPotion.threshold",
             min = 0,
             max = 100,
             step = 5,
             default = 35,
-            tooltip = L.HealingPotionThresholdTooltip,
+            tooltip = "当生命值低于此百分比时自动使用阿加治疗药水\n按品质依次尝试: 史诗 > 稀有 > 优秀",
             onChange = function(self, value)
                 cfg.healingPotionThreshold = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.HealingPotionThreshold .. ": " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 治疗药水阈值设置为: " .. value .. "%")
             end
         })
         :Checkbox({
-            text = L.EnableCombatPotion,
+            text = "启用爆发药水",
             key = "fury.combatPotion.enabled",
             default = true,
-            tooltip = L.CombatPotionTooltip,
+            tooltip = "自动使用爆发药水增强输出",
             onChange = function(self, checked)
                 cfg.useCombatPotion = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.EnableCombatPotion .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 爆发药水已" .. (checked and "启用" or "禁用"))
             end
         })
         :Checkbox({
-            text = L.CombatPotionWithBurst,
+            text = "爆发药水跟随爆发技能",
             key = "fury.combatPotion.withCooldowns",
             default = true,
-            tooltip = L.CombatPotionWithBurstTooltip,
+            tooltip = "勾选: 仅在爆发技能启用时使用爆发药水\n不勾选: 战斗中CD好就用",
             onChange = function(self, checked)
                 cfg.combatPotionWithCooldowns = checked
-                local mode = checked and (isZhCN and "跟随爆发技能" or "With Burst") or (isZhCN and "CD好就用" or "On CD")
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.CombatPotionWithBurst .. ": " .. mode)
+                local mode = checked and "跟随爆发技能" or "CD好就用"
+                print("|cff00ff00[TT狂战]|r 爆发药水模式: " .. mode)
             end
         })
     
     -- 辅助技能标签页
-    gui:Tab(L.TabAuxiliary)
-        :Header({ text = Aurora.texture(184364, 16) .. " " .. L.DefensiveSkills })
+    gui:Tab("辅助技能")
+        :Header({ text = Aurora.texture(184364, 16) .. " 防护技能" })
         :Checkbox({
-            text = Aurora.texture(184364, 14) .. " " .. L.UseEnragingRegen,
+            text = Aurora.texture(184364, 14) .. " 使用狂暴回复",
             key = "fury.enragingRegeneration.enabled",
             default = true,
-            tooltip = L.EnragingRegenTooltip,
+            tooltip = "自动使用狂暴回复来恢复生命值",
             onChange = function(self, checked)
                 cfg.useEnragingRegeneration = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseEnragingRegen .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 狂暴回复已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.HealthThreshold,
+            text = "生命值阈值 (%)",
             key = "fury.enragingRegeneration.threshold",
             default = 45,
             min = 0,
             max = 100,
             step = 5,
-            tooltip = L.EnragingRegenTooltip,
+            tooltip = "当生命值低于此百分比时自动使用狂暴回复",
             onChange = function(self, value)
                 cfg.enragingRegenerationThreshold = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseEnragingRegen .. " " .. L.HealthThreshold .. ": " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 狂暴回复阈值设置为: " .. value .. "%")
             end
         })
         
-        -- 胜利在望 - ✅ 已修复目标检查问题
         :Checkbox({
-            text = Aurora.texture(34428, 14) .. " " .. L.UseVictoryRush,
+            text = Aurora.texture(34428, 14) .. " 使用胜利在望",
             key = "fury.victoryRush.enabled",
             default = true,
-            tooltip = L.VictoryRushTooltip,
+            tooltip = "自动使用胜利在望来恢复生命值",
             onChange = function(self, checked)
                 cfg.useVictoryRush = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseVictoryRush .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.HealthThreshold,
+            text = "生命值阈值 (%)",
             key = "fury.victoryRush.threshold",
             default = 40,
             min = 0,
             max = 100,
             step = 5,
-            tooltip = L.VictoryRushTooltip,
+            tooltip = "当生命值低于此百分比时自动使用胜利在望",
             onChange = function(self, value)
                 cfg.victoryRushThreshold = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseVictoryRush .. " " .. L.HealthThreshold .. ": " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 胜利在望阈值设置为: " .. value .. "%")
             end
         })
         
         -- 法术反射
         :Checkbox({
-            text = Aurora.texture(23920, 14) .. " " .. L.UseSpellReflection,
+            text = Aurora.texture(23920, 14) .. " 使用法术反射",
             key = "fury.useSpellReflection",
             default = true,
-            tooltip = L.SpellReflectionTooltip,
+            tooltip = "怪物对你施法时，且打断CD会自动反射",
             onChange = function(self, checked)
                 cfg.useSpellReflection = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseSpellReflection .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 法术反射已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.CastProgress,
+            text = "施法进度 (%)",
             key = "fury.spellReflectionCastPercent",
             default = 60,
             min = 20,
             max = 80,
             step = 5,
-            tooltip = L.SpellReflectionCastTooltip,
+            tooltip = "怪物施法进度达到此值时才反射\n\n推荐值：60%\n避免过早使用浪费技能",
             onChange = function(self, value)
                 cfg.spellReflectionCastPercent = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseSpellReflection .. " " .. L.CastProgress .. ": " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 法术反射进度阈值设置为: " .. value .. "%")
             end
         })
         
         -- 显示掠武风暴范围
         :Checkbox({
-            text = Aurora.texture(444775, 14) .. " " .. L.ShowWhirlwindRange,
+            text = Aurora.texture(444775, 14) .. " 显示掠武风暴范围",
             key = "fury.whirlwind.showRange",
             default = true,
-            tooltip = (isZhCN and "战斗中在脚下显示5码范围圆圈\n帮助你站在怪物中间打出最高伤害" or "Show 5-yard range circle in combat\nHelps you position for maximum damage"),
+            tooltip = "战斗中在脚下显示5码范围圆圈\n帮助你站在怪物中间打出最高伤害",
             onChange = function(self, checked)
                 cfg.showWhirlwindRange = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.ShowWhirlwindRange .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 范围显示已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.RangeOpacity,
+            text = "范围圆圈透明度",
             key = "fury.whirlwind.rangeOpacity",
             default = 150,
             min = 50,
             max = 255,
             step = 10,
-            tooltip = (isZhCN and "调整圆圈的透明度\n数值越高越明显（50-255）" or "Adjust circle opacity\nHigher values = more visible (50-255)"),
+            tooltip = "调整圆圈的透明度\n数值越高越明显（50-255）",
             onChange = function(self, value)
                 cfg.whirlwindRangeOpacity = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.RangeOpacity .. ": " .. value)
+                print("|cff00ff00[TT狂战]|r 圆圈透明度: " .. value)
             end
         })
     
     -- 打断标签页
-    gui:Tab(L.TabInterrupt)
-        :Header({ text = Aurora.texture(6552, 16) .. " " .. L.InterruptHeader })
+    gui:Tab("打断")
+        :Header({ text = Aurora.texture(6552, 16) .. " 打断系统设置" })
         :Checkbox({
-            text = L.UseAuroraList,
+            text = "使用 Aurora 列表",
             key = "fury.interrupt.withList",
             default = true,
-            tooltip = L.AuroraListTooltip,
+            tooltip = "启用：只打断列表中的技能\n禁用：打断所有可打断技能\n\n💡 打断功能受Cooldown框架控制",
             onChange = function(self, checked)
                 cfg.interruptWithList = checked
-                local mode = checked and (isZhCN and "仅列表" or "List Only") or (isZhCN and "全部" or "All")
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseAuroraList .. ": " .. mode)
+                local mode = checked and "仅列表" or "全部"
+                print("|cff00ff00[TT狂战]|r 列表打断模式: " .. mode)
             end
         })
         :Slider({
-            text = L.InterruptCastProgress,
+            text = "施法进度 (%)",
             key = "fury.interrupt.castPercent",
             default = 60,
             min = 20,
             max = 80,
             step = 5,
-            tooltip = L.InterruptCastTooltip,
+            tooltip = "只有当施法进度到达此百分比才打断",
             onChange = function(self, value)
                 cfg.interruptCastPercent = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.InterruptCastProgress .. ": " .. value .. "%")
+                print("|cff00ff00[TT狂战]|r 施法进度阈值设置为: " .. value .. "%")
             end
         })
         
         -- 风暴之锤
         :Checkbox({
-            text = Aurora.texture(107570, 14) .. " " .. L.UseStormBolt,
+            text = Aurora.texture(107570, 14) .. " 使用风暴之锤",
             key = "fury.interrupt.stormBolt",
             default = true,
-            tooltip = L.StormBoltTooltip,
+            tooltip = "启用/禁用风暴之锤打断\n• 单体打断：1个读条怪时，拳击CD后使用\n• 30秒CD，远程40码",
             onChange = function(self, checked)
                 cfg.useStormBolt = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseStormBolt .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 风暴之锤已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.CastingEnemies,
+            text = "读条怪物数量",
             key = "fury.interrupt.stormBoltEnemyCount",
             default = 1,
             min = 1,
             max = 10,
             step = 1,
-            tooltip = (isZhCN and "当读条且可打断的怪物数量 >= 此值时才使用" or "Use when casting enemies ≥ this value"),
+            tooltip = "当读条且可打断的怪物数量 >= 此值时才使用",
             onChange = function(self, value)
                 cfg.stormBoltEnemyCount = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseStormBolt .. " " .. L.CastingEnemies .. ": " .. value)
+                print("|cff00ff00[TT狂战]|r 风暴之锤读条怪数设置为: " .. value)
             end
         })
         
         -- 震荡波
         :Checkbox({
-            text = Aurora.texture(46968, 14) .. " " .. L.UseShockwave,
+            text = Aurora.texture(46968, 14) .. " 使用震荡波",
             key = "fury.interrupt.shockwave",
             default = true,
-            tooltip = L.ShockwaveTooltip,
+            tooltip = "启用/禁用震荡波打断\n• 多目标打断：2个以上读条怪时优先使用\n• 单体兜底：拳击和风暴都CD时使用\n• 40秒CD，范围10码",
             onChange = function(self, checked)
                 cfg.useShockwave = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseShockwave .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 震荡波已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.CastingEnemies,
+            text = "读条怪物数量",
             key = "fury.interrupt.shockwaveEnemyCount",
             default = 2,
             min = 1,
             max = 10,
             step = 1,
-            tooltip = (isZhCN and "当读条且可打断的怪物数量 >= 此值时才使用" or "Use when casting enemies ≥ this value"),
+            tooltip = "当读条且可打断的怪物数量 >= 此值时才使用",
             onChange = function(self, value)
                 cfg.shockwaveEnemyCount = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseShockwave .. " " .. L.CastingEnemies .. ": " .. value)
+                print("|cff00ff00[TT狂战]|r 震荡波读条怪数设置为: " .. value)
             end
         })
         
         -- 拳击
         :Checkbox({
-            text = Aurora.texture(6552, 14) .. " " .. L.UsePummel,
+            text = Aurora.texture(6552, 14) .. " 使用拳击",
             key = "fury.interrupt.pummel",
             default = true,
-            tooltip = L.PummelTooltip,
+            tooltip = "启用/禁用拳击打断\n这是主要的打断技能，优先级最高",
             onChange = function(self, checked)
                 cfg.usePummel = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UsePummel .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 拳击已" .. (checked and "启用" or "禁用"))
             end
         })
     
     -- 爆发技能标签页
-    gui:Tab(L.TabBurst)
-        :Header({ text = Aurora.texture(1719, 16) .. " " .. L.BurstHeader })
+    gui:Tab("爆发技能")
+        :Header({ text = Aurora.texture(1719, 16) .. " 大技能控制" })
         :Checkbox({
-            text = Aurora.texture(18499, 14) .. " " .. L.ReserveBurst,
+            text = Aurora.texture(18499, 14) .. " 预留爆发",
             key = "fury.cooldowns.reserveBurst",
             default = false,
-            tooltip = L.ReserveBurstTooltip,
+            tooltip = "AOE小怪只剩1-2只时不使用爆发技能\n\n作用:\n- 避免在残血小怪上浪费大技能CD\n- 保留爆发留给Boss或下一波小怪\n\n适用场景:\n- 大秘境(M+)多波次小怪\n- 需要合理分配CD的战斗\n\n建议: 开启",
             onChange = function(self, checked)
                 cfg.reserveBurst = checked
+                -- print("|cff00ff00[TT狂战]|r 预留爆发已" .. (checked and "启用" or "禁用"))
             end
         })
         :Text({ text = "", size = 5 })
         -- 鲁莽
         :Checkbox({
-            text = Aurora.texture(1719, 14) .. " " .. L.UseRecklessness,
+            text = Aurora.texture(1719, 14) .. " 使用鲁莽",
             key = "fury.cooldowns.recklessness",
             default = true,
-            tooltip = L.RecklessnessTooltip,
+            tooltip = "启用/禁用鲁莽技能\n冷却时间: 90秒\n效果: 大幅提升暴击率和伤害",
             onChange = function(self, checked)
                 cfg.useRecklessness = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseRecklessness .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 鲁莽已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.TTDThreshold,
+            text = "目标存活时间 (TTD)",
             key = "fury.cooldowns.recklessnessTTD",
             default = 10,
             min = 5,
             max = 30,
             step = 1,
-            tooltip = L.TTDTooltipGeneric,
+            tooltip = "目标预计存活时间 ≥ 此值才使用鲁莽\n避免在即将死亡的目标上浪费90秒CD\n建议: 10秒",
             onChange = function(self, value)
                 cfg.recklessnessTTD = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseRecklessness .. " " .. L.TTDThreshold .. ": " .. value .. (isZhCN and "秒" or "s"))
+                print("|cff00ff00[TT狂战]|r 鲁莽 TTD 阈值: " .. value .. "秒")
             end
         })
         
         -- 天神下凡
         :Checkbox({
-            text = Aurora.texture(107574, 14) .. " " .. L.UseAvatar,
+            text = Aurora.texture(107574, 14) .. " 使用天神下凡",
             key = "fury.cooldowns.avatar",
             default = true,
-            tooltip = L.AvatarTooltip,
+            tooltip = "启用/禁用天神下凡技能\n冷却时间: 90秒\n效果: 提升伤害和冷却恢复速度",
             onChange = function(self, checked)
                 cfg.useAvatar = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseAvatar .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 天神下凡已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.TTDThreshold,
+            text = "目标存活时间 (TTD)",
             key = "fury.cooldowns.avatarTTD",
             default = 10,
             min = 5,
             max = 30,
             step = 1,
-            tooltip = L.TTDTooltipGeneric,
+            tooltip = "目标预计存活时间 ≥ 此值才使用天神下凡\n避免在即将死亡的目标上浪费90秒CD\n建议: 10秒",
             onChange = function(self, value)
                 cfg.avatarTTD = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseAvatar .. " " .. L.TTDThreshold .. ": " .. value .. (isZhCN and "秒" or "s"))
+                print("|cff00ff00[TT狂战]|r 天神下凡 TTD 阈值: " .. value .. "秒")
             end
         })
         
         -- 剑刃风暴
         :Checkbox({
-            text = Aurora.texture(446035, 14) .. " " .. L.UseBladestorm,
+            text = Aurora.texture(446035, 14) .. " 使用剑刃风暴",
             key = "fury.cooldowns.bladestorm",
             default = true,
-            tooltip = L.BladestormTooltip,
+            tooltip = "启用/禁用剑刃风暴技能\n冷却时间: 90秒\n效果: 强力 AOE 技能",
             onChange = function(self, checked)
                 cfg.useBladestorm = checked
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseBladestorm .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+                print("|cff00ff00[TT狂战]|r 剑刃风暴已" .. (checked and "启用" or "禁用"))
             end
         })
         :Slider({
-            text = L.TTDThreshold,
+            text = "目标存活时间 (TTD)",
             key = "fury.cooldowns.bladestormTTD",
             default = 8,
             min = 5,
             max = 30,
             step = 1,
-            tooltip = L.TTDTooltipGeneric,
+            tooltip = "目标预计存活时间 ≥ 此值才使用剑刃风暴\n剑刃风暴持续4秒，建议至少8秒\n建议: 8秒",
             onChange = function(self, value)
                 cfg.bladestormTTD = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseBladestorm .. " " .. L.TTDThreshold .. ": " .. value .. (isZhCN and "秒" or "s"))
+                print("|cff00ff00[TT狂战]|r 剑刃风暴 TTD 阈值: " .. value .. "秒")
             end
         })
     
     -- 天赋导入标签页
-    gui:Tab(L.TabTalents)
-        :Header({ text = L.TalentsHeader })
+    gui:Tab("天赋导入")
+        :Header({ text = "天赋配置导入" })
         :Button({
-            text = Aurora.texture(134400, 16) .. " " .. L.TalentSlaughter,
+            text = Aurora.texture(134400, 16) .. " 大米屠戮天赋",
             width = 200,
             height = 30,
-            tooltip = L.TalentSlaughterTooltip,
+            tooltip = "点击弹出天赋代码窗口\n适用场景：大秘境M+ / 团本AOE",
             onClick = function()
                 -- 天赋代码
                 local talentCode = "CgEArbixk/ZKwTdpZGVHeylmLAAAAAAAAAQjhxsxMMzygZWYmZmZGmhZ22mZMzMLAzMzYmxywwMzMAAAIGbbDsAmgZYCMYDA"
@@ -3269,7 +3290,6 @@ if Aurora.Macro then
     cfg.aoeThreshold5 = Aurora.Config:Read("fury.aoe.threshold5")
     cfg.showWhirlwindRange = Aurora.Config:Read("fury.whirlwind.showRange")
     cfg.whirlwindRangeOpacity = Aurora.Config:Read("fury.whirlwind.rangeOpacity")
-    cfg.debug = Aurora.Config:Read("fury.debug.enabled")
     
     -- 加载中断配置
     cfg.useInterrupt = Aurora.Config:Read("fury.interrupt.enabled")
@@ -3369,8 +3389,8 @@ if Aurora.Macro then
     
     -- 注册天赋弹窗对话框
     StaticPopupDialogs["SLAYER_TALENT_CODE"] = {
-        text = (isZhCN and "天赋配置：大米屠戮\n\n" .. L.TalentCopyInst or "Talent Config: " .. L.TalentSlaughter .. "\n\n" .. L.TalentCopyInst),
-        button1 = (isZhCN and "确定" or "OK"),
+        text = "天赋配置：大米屠戮\n\n请按 Ctrl+C 复制下方输入框中的代码",
+        button1 = "确定",
         timeout = 0,
         whileDead = true,
         hideOnEscape = true,
@@ -3464,21 +3484,6 @@ if Aurora.Macro then
         end
     end, "切换爆发技能 (on/off/toggle)")
     
-    -- 切换调试模式
-    Aurora.Macro:RegisterCommand("debug", function(args)
-        if args == "on" or args == "1" then
-            cfg.debug = true
-            print("|cff00ff00[TT狂战]|r 调试模式已 |cff00ff00启用|r")
-        elseif args == "off" or args == "0" then
-            cfg.debug = false
-            print("|cffff0000[TT狂战]|r 调试模式已 |cffff0000禁用|r")
-        else
-            cfg.debug = not cfg.debug
-            local status = cfg.debug and "|cff00ff00启用|r" or "|cffff0000禁用|r"
-            print("|cff00ff00[TT狂战]|r 调试模式已切换为: " .. status)
-        end
-    end, "切换调试模式 (on/off/toggle)")
-    
     -- 显示当前状态
     Aurora.Macro:RegisterCommand("status", function()
         print("|cffff00ff========== TT狂战状态 ==========|r")
@@ -3504,7 +3509,6 @@ if Aurora.Macro then
         print("最终使用中断: " .. (ShouldUseInterrupt() and "|cff00ff00是|r" or "|cffff0000否|r"))
         
         -- 其他设置
-        print("调试模式: " .. (cfg.debug and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         print("自动中断: " .. (cfg.useInterrupt and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         print("列表中断: " .. (cfg.interruptWithList and "|cff00ff00启用|r (仅列表)" or "|cffff0000禁用|r (全部)"))
         print("狂暴回复: " .. (cfg.useEnragingRegeneration and "|cff00ff00启用|r" or "|cffff0000禁用|r") .. " (阈值: " .. cfg.enragingRegenerationThreshold .. "%)")
@@ -4526,14 +4530,14 @@ C_Timer.After(2.5, function()
             if lastSeenVersion == "0.0.0" then
                 -- 首次使用
                 Aurora.Toast:Show(
-                    string.format("%s v%s", L.RoutineName, currentVersion),
-                    string.format(L.ToastWelcome, playerName)
+                    string.format("TT狂战 v%s", currentVersion),
+                    string.format("欢迎, %s! 输入 /fury help 查看命令", playerName)
                 )
             else
                 -- 版本更新
                 Aurora.Toast:Show(
-                    string.format((isZhCN and "%s已更新至 v%s" or "%s Updated to v%s"), L.RoutineName, currentVersion),
-                    L.ToastUpdate
+                    string.format("TT狂战已更新至 v%s", currentVersion),
+                    "优化：性能提升 | 添加焕生治疗药水"
                 )
             end
         end
