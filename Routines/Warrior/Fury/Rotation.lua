@@ -847,8 +847,7 @@ S.VictoryRush:callback(function(spell)
     end
     
     -- ✅ 不检查 buff，直接尝试施法
-    -- Aurora 会处理所有游戏内的检查（buff、目标、距离等）
-    -- 失败时返回 false，不会阻塞循环
+    -- Aurora 的 cast() 会处理所有游戏内的检查（buff、目标、距离等）
     local success = spell:cast(target)
     return success or false
 end)
@@ -2926,6 +2925,7 @@ if Aurora.Macro then
             tooltip = L.EnragingRegenTooltip,
             onChange = function(self, value)
                 cfg.enragingRegenerationThreshold = value
+                Aurora.Config:Write("fury.enragingRegeneration.threshold", value)  -- ✅ 保存配置
                 print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseEnragingRegen .. " " .. L.HealthThreshold .. ": " .. value .. "%")
             end
         })
@@ -2951,6 +2951,7 @@ if Aurora.Macro then
             tooltip = L.VictoryRushTooltip,
             onChange = function(self, value)
                 cfg.victoryRushThreshold = value
+                Aurora.Config:Write("fury.victoryRush.threshold", value)  -- ✅ 保存配置
                 print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseVictoryRush .. " " .. L.HealthThreshold .. ": " .. value .. "%")
             end
         })
