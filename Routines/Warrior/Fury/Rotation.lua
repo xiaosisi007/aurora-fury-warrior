@@ -2819,12 +2819,11 @@ if Aurora.Macro then
             end
         })
         
-        -- 胜利在望 - ✅ 已修复目标检查问题
         :Checkbox({
             text = Aurora.texture(34428, 14) .. " 使用胜利在望",
             key = "fury.victoryRush.enabled",
             default = true,
-            tooltip = "自动使用胜利在望来恢复生命值\n✅ 已修复目标检查，不会卡技能",
+            tooltip = "自动使用胜利在望来恢复生命值",
             onChange = function(self, checked)
                 cfg.useVictoryRush = checked
                 print("|cff00ff00[TT狂战]|r 胜利在望已" .. (checked and "启用" or "禁用"))
@@ -4406,7 +4405,7 @@ C_Timer.After(2.5, function()
                 -- 版本更新
                 Aurora.Toast:Show(
                     string.format("TT狂战已更新至 v%s", currentVersion),
-                    "优化：移除调试信息 | 打断默认值优化"
+                    "优化：性能提升 | 添加焕生治疗药水"
                 )
             end
         end
