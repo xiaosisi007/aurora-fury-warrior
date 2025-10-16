@@ -537,6 +537,9 @@ local function ShouldInterrupt(unit)
             -- 检查技能是否在中断列表中
             for _, interruptSpellId in ipairs(Aurora.Lists.InterruptSpells) do
                 if spellId == interruptSpellId then
+                    if cfg.debug then
+                        log(string.format("检测到需要中断的技能: %d", spellId))
+                    end
                     return true
                 end
             end
@@ -3072,6 +3075,19 @@ if Aurora.Macro then
                 print("|cff00ff00[TT狂战]|r 剑刃风暴 TTD 阈值: " .. value .. "秒")
             end
         })
+        
+        :Text({ text = "", size = 10 })
+        :Header({ text = "调试选项" })
+        :Checkbox({
+            text = Aurora.texture(134332, 14) .. " 启用调试模式",
+            key = "fury.debug",
+            default = false,
+            tooltip = "开启后会在聊天框显示详细的循环信息\n\n包括:\n• 饰品使用/跳过信息\n• 技能使用决策\n• 打断系统状态\n\n注意: 会产生大量消息",
+            onChange = function(self, checked)
+                cfg.debug = checked
+                print("|cff00ff00[TT狂战]|r 调试模式已" .. (checked and "启用 ✅" or "禁用 ❌"))
+            end
+        })
     
     -- 天赋导入标签页
     gui:Tab("天赋导入")
@@ -3159,6 +3175,7 @@ if Aurora.Macro then
     cfg.aoeThreshold5 = Aurora.Config:Read("fury.aoe.threshold5")
     cfg.showWhirlwindRange = Aurora.Config:Read("fury.whirlwind.showRange")
     cfg.whirlwindRangeOpacity = Aurora.Config:Read("fury.whirlwind.rangeOpacity")
+    cfg.debug = Aurora.Config:Read("fury.debug.enabled")
     
     -- 加载中断配置
     cfg.useInterrupt = Aurora.Config:Read("fury.interrupt.enabled")
@@ -3353,6 +3370,21 @@ if Aurora.Macro then
         end
     end, "切换爆发技能 (on/off/toggle)")
     
+    -- 切换调试模式
+    Aurora.Macro:RegisterCommand("debug", function(args)
+        if args == "on" or args == "1" then
+            cfg.debug = true
+            print("|cff00ff00[TT狂战]|r 调试模式已 |cff00ff00启用|r")
+        elseif args == "off" or args == "0" then
+            cfg.debug = false
+            print("|cffff0000[TT狂战]|r 调试模式已 |cffff0000禁用|r")
+        else
+            cfg.debug = not cfg.debug
+            local status = cfg.debug and "|cff00ff00启用|r" or "|cffff0000禁用|r"
+            print("|cff00ff00[TT狂战]|r 调试模式已切换为: " .. status)
+        end
+    end, "切换调试模式 (on/off/toggle)")
+    
     -- 显示当前状态
     Aurora.Macro:RegisterCommand("status", function()
         print("|cffff00ff========== TT狂战状态 ==========|r")
@@ -3378,6 +3410,7 @@ if Aurora.Macro then
         print("最终使用中断: " .. (ShouldUseInterrupt() and "|cff00ff00是|r" or "|cffff0000否|r"))
         
         -- 其他设置
+        print("调试模式: " .. (cfg.debug and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         print("自动中断: " .. (cfg.useInterrupt and "|cff00ff00启用|r" or "|cffff0000禁用|r"))
         print("列表中断: " .. (cfg.interruptWithList and "|cff00ff00启用|r (仅列表)" or "|cffff0000禁用|r (全部)"))
         print("狂暴回复: " .. (cfg.useEnragingRegeneration and "|cff00ff00启用|r" or "|cffff0000禁用|r") .. " (阈值: " .. cfg.enragingRegenerationThreshold .. "%)")
