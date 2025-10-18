@@ -1547,427 +1547,6 @@ end)
 ------------------------------------------------------------------------
 -- SimC优化循环（基于SimulationCraft APL - Slayer天赋）
 ------------------------------------------------------------------------
-local function SimCRotation()
-    UpdateCombatTime()
-    
-    
-    if player.dead then return false end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【生存技能】优先级最高，即使没有目标也要能用
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if UseHealthstone() then return true end
-    if UseHealingPotion() then return true end
-    if S.EnragingRegeneration:execute() then return true end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【自动目标切换】当目标不存在或超出范围时，自动切换
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    AutoTargetSwitch()
-    
-    -- 检查目标有效性
-    if not target or not target.exists or not target.alive or not target.enemy then
-        return false
-    end
-    
-    -- 获取战斗数据
-    local enemies = player.enemiesaround(8) or 0
-    local enrageUp = player.aura(A.Enrage) and true or false
-    local enrageRem = player.auraremains(A.Enrage) or 0
-    local rage = player.rage or 0
-    local mcStacks = player.auracount(A.MeatCleaver) or 0
-    local combatTime = GetCombatTime()
-    local suddenDeathUp = player.aura(A.SuddenDeath) and true or false
-    local executePhase = (target.healthpercent < 35) or (target.healthpercent < 20)
-    
-    -- ✅ 优化：预缓存天赋检查结果（减少循环中的 isknown() 调用）
-    local hasMeatCleaver = S.MeatCleaver and S.MeatCleaver:isknown() or false
-    local hasTitanicRage = S.TitanicRage and S.TitanicRage:isknown() or false
-    local hasTenderize = S.Tenderize and S.Tenderize:isknown() or false
-    local hasViciousContempt = S.ViciousContempt and S.ViciousContempt:isknown() or false
-    local hasRecklessAbandon = S.RecklessAbandon and S.RecklessAbandon:isknown() or false
-    local hasAngerManagement = S.AngerManagement and S.AngerManagement:isknown() or false
-    local hasUproar = S.Uproar and S.Uproar:isknown() or false
-    local hasBloodborne = S.Bloodborne and S.Bloodborne:isknown() or false
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【起手优化】斩鲜血肉天赋 - 优先使用嗜血触发激怒
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    local playerCombatTime = player.timecombat or 0
-    
-    -- 战斗开始的前5秒，如果没有激怒BUFF，优先用嗜血触发激怒
-    if playerCombatTime < 5 and not enrageUp and S.Bloodthirst and S.Bloodthirst:ready() then
-        if S.Bloodthirst:execute() then return true end
-    end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【最高优先级】打断系统
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- execute() 会触发在 Rotation.lua 中定义的 callback
-    -- callback 中包含所有打断逻辑（开关检查、目标选择、列表检查等）
-    if S.Pummel:execute() then return true end
-    if S.StormBolt:execute() then return true end
-    if S.Shockwave:execute() then return true end
-    
-    -- 防御技能（反射在打断之后）
-    if S.SpellReflection:execute() then return true end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【生存技能 - 需要目标】胜利在望
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if S.VictoryRush:execute() then return true end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 饰品和药水（受爆发开关控制）
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if ShouldUseCooldowns() then
-        local recklessnessReady = S.Recklessness:ready() and cfg.useRecklessness
-        local avatarReady = S.Avatar:ready() and cfg.useAvatar
-        local bladestormReady = S.Bladestorm:ready() and cfg.useBladestorm
-        local anyCooldownReady = recklessnessReady or avatarReady or bladestormReady
-        
-        local shouldUseMajorCooldown = false
-        if anyCooldownReady then
-            local minTTD = math.min(
-                cfg.recklessnessTTD or 10,
-                cfg.avatarTTD or 10,
-                cfg.bladestormTTD or 8
-            )
-            shouldUseMajorCooldown = ShouldUseMajorCooldown(minTTD)
-        end
-        
-        -- 饰品1（必须在近战范围内才能使用）
-        if cfg.useTrinket1 and cfg.trinket1WithCooldowns then
-            if combatTime >= 2.0 and anyCooldownReady and shouldUseMajorCooldown then
-                -- ✅ 优化：只保留近战距离判断
-                if player.melee(target) then
-                    if UseTrinket1() then return false end
-                end
-            end
-        end
-        
-        -- 饰品2（必须在近战范围内才能使用）
-        if cfg.useTrinket2 and cfg.trinket2WithCooldowns then
-            if combatTime >= 2.0 and anyCooldownReady and shouldUseMajorCooldown then
-                -- ✅ 优化：只保留近战距离判断
-                if player.melee(target) then
-                    if UseTrinket2() then return false end
-                end
-            end
-        end
-        
-        -- 爆发药水（必须在近战范围内才能使用）
-        if cfg.useCombatPotion and cfg.combatPotionWithCooldowns then
-            if combatTime >= 2.0 and anyCooldownReady and shouldUseMajorCooldown then
-                -- ✅ 优化：只保留近战距离判断
-                if player.melee(target) then
-                    UseCombatPotion()
-                end
-            end
-        end
-    end
-    
-    -- 等待饰品引导完成
-    if IsTrinketChanneling() then
-        return false
-    end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- SimC APL: Slayer优化手法 (已验证正确BUFF ID)
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 核心BUFF验证：
-    -- ✅ 灰烬主宰 (392537)
-    -- ✅ 残暴终结 (446918)
-    -- ✅ 屠戮打击 (393931)
-    -- ✅ 血腥疯狂 (393951)
-    -- ✅ 处刑之印 (445584)
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    -- 【第1优先级】大技能爆发（必须在近战范围内才能开启）
-    -- ✅ 优化：cast()会自动检查exists/alive/enemy，只保留近战距离判断
-    if player.melee(target) then
-        if S.Recklessness:execute() then return true end
-        if S.Avatar:execute() then return true end
-    end
-    
-    -- 【第2优先级】Slayer核心机制 - 灰烬主宰紧急处理
-    -- 灰烬主宰BUFF即将消失时立即Execute，确保不浪费巨额伤害加成
-    if player.aura(A.AshenJuggernaut) then
-        local ashenRem = player.auraremains(A.AshenJuggernaut)
-        if ashenRem > 0 and ashenRem <= 1.5 then
-            if S.Execute:cast(target) then
-                return true
-            end
-        end
-    end
-    
-    -- 【第3优先级】猝死BUFF时间窗口优化
-    -- 非斩杀阶段猝死BUFF <2秒时立即Execute，防止BUFF浪费
-    if suddenDeathUp then
-        local sdRem = player.auraremains(A.SuddenDeath)
-        if not executePhase and sdRem < 2.0 then
-            if S.Execute:cast(target) then
-                return true
-            end
-        end
-    end
-    
-    -- 【第3优先级】爆发技能
-    -- Thunderous Roar - 激怒状态下使用（单体+AOE通用）
-    -- 只要CD好了且在激怒状态就立即使用
-    if enrageUp then
-        if S.ThunderousRoar:execute() then return true end
-    end
-    
-    -- Champions Spear - 配合剑刃风暴
-    if S.ChampionsSpear and S.ChampionsSpear:ready() then
-        if S.Bladestorm:ready() and enrageUp then
-            local avatarReady = S.Avatar:ready() or player.aura(A.Avatar)
-            local recklessnessReady = S.Recklessness:ready() or player.aura(A.Recklessness)
-            if avatarReady or recklessnessReady then
-                if S.ChampionsSpear:cast(target) then return true end
-            end
-        end
-    end
-    
-    -- Odyns Fury - AOE清空菜刀层数
-    if S.OdynsFury and S.OdynsFury:ready() then
-        if enemies > 1 and hasTitanicRage and mcStacks == 0 then
-            if S.OdynsFury:cast(target) then return true end
-        end
-    end
-    
-    -- Bladestorm - 智能CD管理
-    if enrageUp then
-        local canUseBladestorm = false
-        
-        if hasRecklessAbandon then
-            if S.Avatar:getcd() >= 24 then
-                canUseBladestorm = true
-            end
-        elseif hasAngerManagement then
-            local reckCD = S.Recklessness:getcd()
-            local avatarCD = S.Avatar:getcd()
-            local avatarUp = player.aura(A.Avatar)
-            
-            if reckCD >= 15 and (avatarUp or avatarCD >= 8) then
-                canUseBladestorm = true
-            end
-        else
-            canUseBladestorm = true
-        end
-        
-        if canUseBladestorm then
-            if S.Bladestorm:execute() then return true end
-        end
-    end
-    
-    -- 【第4优先级】AOE铺层数
-    -- Whirlwind - 确保菜刀BUFF
-    -- 时间追踪检查已在 callback 中处理，这里只检查业务逻辑
-    if enemies >= 2 and hasMeatCleaver and mcStacks == 0 then
-        if S.Whirlwind:execute() then
-            return true
-        end
-    end
-    
-    -- 【第5优先级】暴怒管理
-    -- Rampage - 趁温柔BUFF
-    if hasTenderize and player.aura(A.BrutalFinish) then
-        if S.Rampage:cast(target) then return true end
-    end
-    
-    -- Rampage - 暴怒即将消失
-    if enrageRem < 1.5 then
-        if S.Rampage:cast(target) then return true end
-    end
-    
-    -- 【第6优先级】Slayer高价值Execute
-    -- Execute - 猝死2层优先处理（防止层数浪费）
-    local suddenDeathStacks = player.auracount(A.SuddenDeath) or 0
-    if suddenDeathStacks == 2 and enrageUp then
-        if S.Execute:cast(target) then
-            return true
-        end
-    end
-    
-    -- Execute - 处刑之印层数追踪（Slayer核心机制）
-    local markedStacks = target.auracount(A.MarkedForExecution) or 0
-    if markedStacks > 1 and enrageUp then
-        if S.Execute:cast(target) then
-            return true
-        end
-    end
-    
-    -- 【第7优先级】Odyns Fury（无泰坦之怒）
-    if S.OdynsFury and S.OdynsFury:ready() then
-        if enemies > 1 and not (hasTitanicRage) then
-            if S.OdynsFury:cast(target) then return true end
-        end
-    end
-    
-    -- 【第8优先级】Raging Blow + 残暴终结 + 冠军之力协同
-    local ragingCharges = S.RagingBlow:charges()
-    local brutalFinish = player.aura(A.BrutalFinish)
-    local champMight = target.aura(A.ChampionsMight)
-    local champMightRem = target.auraremains(A.ChampionsMight) or 0
-    
-    local shouldUseRagingBlow = false
-    
-    -- 条件1: 2层充能防止溢出
-    if ragingCharges == 2 then
-        shouldUseRagingBlow = true
-    -- 条件2: 残暴终结BUFF + 冠军之力协同判断
-    elseif brutalFinish then
-        if not champMight or champMightRem > 1.5 then
-            shouldUseRagingBlow = true
-        end
-    end
-    
-    if shouldUseRagingBlow then
-        if S.RagingBlow:cast(target) then
-            return true
-        end
-    end
-    
-    -- 【第9优先级】Bloodbath多条件触发优化
-    if S.Bloodbath and S.Bloodbath:ready() then
-        local shouldUseBT = false
-        
-        -- 条件1: 血腥疯狂BUFF（正确ID: 393951）
-        local bloodcrazeStack = player.auracount(A.Bloodcraze) or 0
-        if bloodcrazeStack >= 1 then
-            shouldUseBT = true
-            if cfg.debug then
-                log(string.format("🩸 【Bloodbath】血腥疯狂 %d层", bloodcrazeStack))
-            end
-        end
-        
-        -- 条件2: 喧哗天赋 + DoT刷新优化
-        if not shouldUseBT then
-            local btDotRem = target.auraremains(A.BloodbathDot) or 0
-            
-            if hasUproar and hasBloodborne and btDotRem < 40 then
-                shouldUseBT = true
-            end
-        end
-        
-        -- 条件3: 激怒即将消失
-        if not shouldUseBT then
-            if enrageUp and enrageRem < 1.5 then
-                shouldUseBT = true
-            end
-        end
-        
-        if shouldUseBT then
-            if S.Bloodbath:cast(target) then
-                return true
-            end
-        end
-    end
-    
-    -- Raging Blow - 配合屠戮打击层数（正确ID: 393931）
-    local slaughteringStacks = player.auracount(A.SlaughteringStrikes) or 0
-    if brutalFinish and slaughteringStacks < 5 then
-        if not champMight or champMightRem > 1.5 then
-            if S.RagingBlow:cast(target) then
-                return true
-            end
-        end
-    end
-    
-    -- 【第10优先级】Rampage防溢出
-    if rage > 115 then
-        if S.Rampage:cast(target) then return true end
-    end
-    
-    -- 【第11优先级】斩杀阶段Execute（单体优化）
-    -- 只在单体且有处刑之印时使用，确保不浪费伤害加成
-    if executePhase and target.aura(A.MarkedForExecution) and enrageUp and enemies == 1 then
-        if cfg.debug then
-            local markedStacks = target.auracount(A.MarkedForExecution) or 0
-            log(string.format("💀 【斩杀阶段】Execute - 处刑之印%d层", markedStacks))
-        end
-        if S.Execute:cast(target) then return true end
-    end
-    
-    -- 【第12优先级】Bloodthirst - 6目标以上使用
-    if S.Bloodthirst and S.Bloodthirst:ready() and enemies > 6 then
-        if cfg.debug then
-            log(string.format("🩸 【嗜血AOE】%d目标", enemies))
-        end
-        if S.Bloodthirst:execute() then return true end
-    end
-    
-    -- 【第13优先级】基础填充技能
-    if S.RagingBlow:cast(target) then return true end
-    
-    if S.Bloodbath and S.Bloodbath:ready() then
-        if S.Bloodbath:cast(target) then return true end
-    end
-    
-    -- Raging Blow - 机会主义者BUFF
-    if player.aura(A.Opportunist) then
-        if S.RagingBlow:cast(target) then return true end
-    end
-    
-    -- Raging Blow - 2层充能
-    if S.RagingBlow:charges() == 2 then
-        if S.RagingBlow:cast(target) then return true end
-    end
-    
-    -- Onslaught - 温柔天赋
-    if S.Onslaught and S.Onslaught:ready() then
-        if hasTenderize then
-            if S.Onslaught:cast(target) then return true end
-        end
-    end
-    
-    if S.RagingBlow:cast(target) then return true end
-    if S.Rampage:cast(target) then return true end
-    
-    -- 【第14优先级】其他技能
-    -- Odyns Fury - 暴怒期或泰坦之怒
-    if S.OdynsFury and S.OdynsFury:ready() then
-        if enrageUp or (hasTitanicRage) then
-            if S.OdynsFury:cast(target) then return true end
-        end
-    end
-    
-    -- Execute - 猝死BUFF
-    if suddenDeathUp then
-        if S.Execute:cast(target) then return true end
-    end
-    
-    -- 【填充技能】Bloodthirst - 5目标及以下时作为填充技能
-    -- ✅ 严格条件：只在其他技能都不可用时使用
-    if S.Bloodthirst and S.Bloodthirst:ready() and enemies <= 5 then
-        -- 检查其他主要技能是否可用
-        local ragingBlowCharges = S.RagingBlow and S.RagingBlow:charges() or 0
-        local canRampage = rage >= 80
-        local canExecute = suddenDeathUp or executePhase
-        
-        -- 只有当其他技能都不可用且怒气不高时才使用嗜血
-        if ragingBlowCharges == 0 and not canRampage and not canExecute and rage < 70 then
-            if cfg.debug then
-                log(string.format("🩸 【嗜血填充】%d目标 (痛击0层|怒气%d)", enemies, rage))
-            end
-            if S.Bloodthirst:execute() then return true end
-        end
-    end
-    
-    -- 【最后兜底】只用Whirlwind，避免Bloodthirst占比过高
-    -- Whirlwind伤害低，不会影响整体DPS占比
-    -- ✅ 只有在近战范围内且有敌人时才使用
-    if player.melee(target) and enemies > 0 then
-        if S.Whirlwind:cast(player) then return true end
-    end
-    
-    -- 注意: Storm Bolt已移除，仅用作打断和控制技能
-    
-    return false
-end
-
 ------------------------------------------------------------------------
 -- SimC循环 V2（完整APL，包含3次Bloodthirst）
 ------------------------------------------------------------------------
@@ -2023,7 +1602,8 @@ local function SimCRotationV2()
     local playerCombatTime = player.timecombat or 0
     
     -- 战斗开始的前5秒，如果没有激怒BUFF，优先用嗜血触发激怒
-    if playerCombatTime < 5 and not enrageUp and S.Bloodthirst and S.Bloodthirst:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if playerCombatTime < 5 and not enrageUp and S.Bloodthirst then
         if S.Bloodthirst:execute() then return true end
     end
     
@@ -2116,18 +1696,24 @@ local function SimCRotationV2()
     end
     
     -- 2. Execute - AshenJuggernaut紧急处理
-    if player.aura(A.AshenJuggernaut) then
-        local ashenRem = player.auraremains(A.AshenJuggernaut)
-        if ashenRem > 0 and ashenRem <= 1.5 then
-            if S.Execute:cast(target) then return true end
+    -- ⚠️【5+目标跳过】时间窗口太短不适用多目标
+    if enemies < 5 then
+        if player.aura(A.AshenJuggernaut) then
+            local ashenRem = player.auraremains(A.AshenJuggernaut)
+            if ashenRem > 0 and ashenRem <= 1.5 then
+                if S.Execute:cast(target) then return true end
+            end
         end
     end
     
     -- 3. Execute - SuddenDeath时间窗口
-    if suddenDeathUp then
-        local sdRem = player.auraremains(A.SuddenDeath)
-        if not executePhase and sdRem < 2.0 then
-            if S.Execute:cast(target) then return true end
+    -- ⚠️【5+目标跳过】会浪费印记，改用优先级12精准控制
+    if enemies < 5 then
+        if suddenDeathUp then
+            local sdRem = player.auraremains(A.SuddenDeath)
+            if not executePhase and sdRem < 2.0 then
+                if S.Execute:cast(target) then return true end
+            end
         end
     end
     
@@ -2136,8 +1722,38 @@ local function SimCRotationV2()
         if S.ThunderousRoar:execute() then return true end
     end
     
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ⚡【5+目标优化】激进 Raging Blow（智能怒气管理）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 目的：在激怒期间最大化怒击输出
+    -- 核心：允许怒气溢出，但确保激怒永不断
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if enemies >= 5 and enrageUp then
+        local bladestormCD = S.Bladestorm:getcd()
+        local enrageRem = player.auraremains(A.Enrage) or 0
+        
+        -- 智能判断：何时跳过怒击（保证激怒维持）
+        local shouldSkipRagingBlow = false
+        
+        -- 条件：激怒即将消失 且 怒气不足暴怒
+        -- 说明：enrageRem < 2.5秒 且 rage < 100
+        -- 目的：留怒气给Rampage续激怒（优先级10会处理）
+        if enrageRem < 2.5 and rage < 100 then
+            shouldSkipRagingBlow = true
+        end
+        
+        -- 疯狂打怒击（允许怒气溢出到150）
+        if bladestormCD > 0 and not shouldSkipRagingBlow then
+            if S.RagingBlow:cast(target) then 
+                return true 
+            end
+        end
+    end
+    
     -- 5. Champions Spear
-    if S.ChampionsSpear and S.ChampionsSpear:ready() then
+    -- ✅ 优化：删除ChampionsSpear的冗余ready()检查（cast()会自动检查）
+    -- 但保留Bladestorm/Avatar/Recklessness的ready()检查（用于逻辑判断）
+    if S.ChampionsSpear then
         if S.Bladestorm:ready() and enrageUp then
             local avatarReady = S.Avatar:ready() or player.aura(A.Avatar)
             local recklessnessReady = S.Recklessness:ready() or player.aura(A.Recklessness)
@@ -2148,7 +1764,8 @@ local function SimCRotationV2()
     end
     
     -- 6. Odyns Fury - AOE清层
-    if S.OdynsFury and S.OdynsFury:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.OdynsFury then
         if enemies > 1 and hasTitanicRage and mcStacks == 0 then
             if S.OdynsFury:cast(target) then return true end
         end
@@ -2190,7 +1807,8 @@ local function SimCRotationV2()
     end
     
     -- 9. Onslaught - Tenderize + BrutalFinish
-    if S.Onslaught and S.Onslaught:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.Onslaught then
         if hasTenderize and player.aura(A.BrutalFinish) then
             if S.Onslaught:cast(target) then return true end
         end
@@ -2202,19 +1820,52 @@ local function SimCRotationV2()
     end
     
     -- 11. Execute - SuddenDeath 2层
+    -- ⚠️【5+目标跳过】被优先级12的条件B取代（2猝死+2印记）
     local suddenDeathStacks = player.auracount(A.SuddenDeath) or 0
-    if suddenDeathStacks == 2 and enrageUp then
-        if S.Execute:cast(target) then return true end
+    if enemies < 5 then
+        if suddenDeathStacks == 2 and enrageUp then
+            if S.Execute:cast(target) then return true end
+        end
     end
     
-    -- 12. Execute - MarkedForExecution >1层
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 12. Execute - MarkedForExecution（5+目标精准控制）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     local markedStacks = target.auracount(A.MarkedForExecution) or 0
-    if markedStacks > 1 and enrageUp then
-        if S.Execute:cast(target) then return true end
+    
+    if enemies >= 5 then
+        -- ⚡【5+目标优化】Execute精准控制
+        -- 核心：只在Bladestorm CD中 + 特定条件下使用
+        local bladestormCD = S.Bladestorm:getcd()
+        
+        -- 必须：Bladestorm在CD中 + 激怒状态
+        if bladestormCD > 0 and enrageUp then
+            local shouldExecute = false
+            
+            -- 条件A：1层猝死 + 3层处刑印记
+            if suddenDeathStacks >= 1 and markedStacks >= 3 then
+                shouldExecute = true
+            end
+            
+            -- 条件B：2层猝死 + 2层处刑印记
+            if suddenDeathStacks >= 2 and markedStacks >= 2 then
+                shouldExecute = true
+            end
+            
+            if shouldExecute then
+                if S.Execute:cast(target) then return true end
+            end
+        end
+    else
+        -- 4目标及以下：保持原逻辑（2层印记）
+        if markedStacks > 1 and enrageUp then
+            if S.Execute:cast(target) then return true end
+        end
     end
     
     -- 13. Odyns Fury - AOE无泰坦
-    if S.OdynsFury and S.OdynsFury:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.OdynsFury then
         if enemies > 1 and not (hasTitanicRage) then
             if S.OdynsFury:cast(target) then return true end
         end
@@ -2231,7 +1882,8 @@ local function SimCRotationV2()
     end
     
     -- 15. Bloodbath - 第一次
-    if S.Bloodbath and S.Bloodbath:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.Bloodbath then
         local shouldUseBT = false
         
         local bloodcrazeStack = player.auracount(A.Bloodcraze) or 0
@@ -2270,28 +1922,40 @@ local function SimCRotationV2()
     end
     
     -- 17. Rampage - 防溢出
-    if rage > 115 then
-        if S.Rampage:cast(target) then return true end
+    -- ⚠️【5+目标移除】允许怒气溢出，不需要防溢出
+    if enemies < 5 then
+        -- 4目标及以下才防溢出
+        if rage > 115 then
+            if S.Rampage:cast(target) then return true end
+        end
     end
+    -- 5+目标：移除此逻辑，允许怒气溢出到150
     
     -- 18. Execute - 斩杀阶段单体
     if executePhase and target.aura(A.MarkedForExecution) and enrageUp and enemies == 1 then
         if S.Execute:cast(target) then return true end
     end
     
-    -- ★★★ 19. Bloodthirst - 6目标以上使用
-    if S.Bloodthirst and S.Bloodthirst:ready() and enemies > 6 then
-        if cfg.debug then
-            log(string.format("🩸 【嗜血AOE-V2】%d目标", enemies))
+    -- ★★★ 19. Bloodthirst - 多目标填充（5+目标极严格限制）
+    -- ⚡【5+目标修改】所有情况都是填充技能，使用率极低
+    if S.Bloodthirst and enemies >= 5 then
+        -- 极严格条件：只在所有主要技能都不可用时使用
+        local ragingBlowCharges = S.RagingBlow:charges() or 0
+        local canRampage = rage >= 80
+        local suddenDeathStacks = player.auracount(A.SuddenDeath) or 0
+        
+        -- 只在：无怒击充能、不能暴怒、无猝死时使用
+        if ragingBlowCharges == 0 and not canRampage and suddenDeathStacks == 0 then
+            if S.Bloodthirst:execute() then return true end
         end
-        if S.Bloodthirst:execute() then return true end
     end
     
     -- 20. Crushing Blow - 第二次
     if S.RagingBlow:cast(target) then return true end
     
     -- 21. Bloodbath - 第二次
-    if S.Bloodbath and S.Bloodbath:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.Bloodbath then
         if S.Bloodbath:cast(target) then return true end
     end
     
@@ -2306,7 +1970,8 @@ local function SimCRotationV2()
     end
     
     -- 25. Onslaught - Tenderize
-    if S.Onslaught and S.Onslaught:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.Onslaught then
         if hasTenderize then
             if S.Onslaught:cast(target) then return true end
         end
@@ -2319,20 +1984,25 @@ local function SimCRotationV2()
     if S.Rampage:cast(target) then return true end
     
     -- 28. Odyns Fury - 激怒或泰坦
-    if S.OdynsFury and S.OdynsFury:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.OdynsFury then
         if enrageUp or (hasTitanicRage) then
             if S.OdynsFury:cast(target) then return true end
         end
     end
     
-    -- 29. Execute - SuddenDeath
-    if suddenDeathUp then
-        if S.Execute:cast(target) then return true end
+    -- 29. Execute - SuddenDeath填充
+    -- ⚠️【5+目标跳过】太随意，改用优先级12精准控制
+    if enemies < 5 then
+        if suddenDeathUp then
+            if S.Execute:cast(target) then return true end
+        end
     end
     
-    -- ★★★ 30. Bloodthirst - 第三次（5目标及以下时作为填充技能）★★★
+    -- ★★★ 30. Bloodthirst - 填充（4目标以下）
     -- ✅ 严格条件：只在其他技能都不可用时使用
-    if S.Bloodthirst and S.Bloodthirst:ready() and enemies <= 5 then
+    -- ⚡【修改】从"<=5"改为"<5"（5目标不使用此逻辑）
+    if S.Bloodthirst and enemies < 5 then
         -- 检查其他主要技能是否可用
         local ragingBlowCharges = S.RagingBlow and S.RagingBlow:charges() or 0
         local canRampage = rage >= 80
@@ -2353,10 +2023,27 @@ local function SimCRotationV2()
     -- 32. Wrecking Throw
     -- (通常不在循环中实现)
     
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ⚡【5+目标优化】裸斩杀收尾（消耗印记减CD）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 场景：一波怪收尾，风暴CD中，怪快死了
+    -- 目的：消耗处刑印记，减少Bladestorm CD
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if enemies >= 5 then
+        local bladestormCD = S.Bladestorm:getcd()
+        local markedStacks = target.auracount(A.MarkedForExecution) or 0
+        
+        -- 收尾条件：风暴CD + 怪快死 + 有印记
+        if bladestormCD > 0 and target.hp <= 20 and markedStacks > 0 then
+            if S.Execute:cast(target) then return true end
+        end
+    end
+    
     -- 33. Bloodthirst（兜底填充 - 单体和多目标）
     -- ✅ 所有情况都用嗜血填充，避免空转
     -- ✅ 旋风斩只用于铺层数，不作为填充技能
-    if S.Bloodthirst and S.Bloodthirst:ready() then
+    -- ✅ 优化：删除冗余ready()检查
+    if S.Bloodthirst then
         if S.Bloodthirst:execute() then return true end
     end
     
@@ -2368,313 +2055,6 @@ end
 ------------------------------------------------------------------------
 -- 主循环（主播手法）
 ------------------------------------------------------------------------
-local function Dps()
-    UpdateCombatTime()
-    
-    
-    if player.dead then return false end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【生存技能】优先级最高，即使没有目标也要能用
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if UseHealthstone() then return true end
-    if UseHealingPotion() then return true end
-    if S.EnragingRegeneration:execute() then return true end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【自动目标切换】当目标不存在或超出范围时，自动切换
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    AutoTargetSwitch()
-    
-    -- 检查目标有效性
-    if not target or not target.exists or not target.alive or not target.enemy then
-        return false
-    end
-    
-    -- 获取战斗数据
-    local enemies = player.enemiesaround(8) or 0
-    local enrageUp = player.aura(A.Enrage) and true or false
-    local enrageRem = player.auraremains(A.Enrage) or 0
-    local rage = player.rage or 0
-    local mcStacks = player.auracount(A.MeatCleaver) or 0
-    local mcRem = player.auraremains(A.MeatCleaver) or 0
-    local combatTime = GetCombatTime()
-    
-    -- 中断（由 Interface.lua 的回调自动处理，无需显式调用）
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【生存技能 - 需要目标】胜利在望
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if S.VictoryRush:execute() then return true end
-    
-    -- 💎 饰品系统（受爆发开关控制）
-    -- 检查爆发开关是否开启
-    if ShouldUseCooldowns() then
-        -- 检查3个大技能是否ready（至少一个）
-        local recklessnessReady = S.Recklessness:ready() and cfg.useRecklessness
-        local avatarReady = S.Avatar:ready() and cfg.useAvatar
-        local bladestormReady = S.Bladestorm:ready() and cfg.useBladestorm
-        local anyCooldownReady = recklessnessReady or avatarReady or bladestormReady
-        
-        -- 🎯 检查目标是否值得使用大技能（避免在小怪上浪费饰品）
-        local shouldUseMajorCooldown = false
-        if anyCooldownReady then
-            -- 使用最小的TTD阈值（最严格的条件）
-            local minTTD = math.min(
-                cfg.recklessnessTTD or 10,
-                cfg.avatarTTD or 10,
-                cfg.bladestormTTD or 8
-            )
-            shouldUseMajorCooldown = ShouldUseMajorCooldown(minTTD)
-        end
-        
-        -- 第1步：使用饰品（引导类，需要1秒）
-        -- 跟随大技能：大技能ready 且 目标值得使用大技能
-        if cfg.useTrinket1 and cfg.trinket1WithCooldowns then
-            if combatTime >= 2.0 then
-                if anyCooldownReady and shouldUseMajorCooldown then
-                    if player.melee(target) then
-                        if UseTrinket1() then
-                            return false  -- 不继续执行，下一帧再检查
-                        end
-                    end
-                end
-            end
-        end
-        
-        if cfg.useTrinket2 and cfg.trinket2WithCooldowns then
-            if combatTime >= 2.0 then
-                if anyCooldownReady and shouldUseMajorCooldown then
-                    if player.melee(target) then
-                        if UseTrinket2() then
-                            return false  -- 不继续执行，下一帧再检查
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- 不跟随大技能：CD好就用（仍受爆发开关控制）
-        if cfg.useTrinket1 and not cfg.trinket1WithCooldowns then
-            if combatTime >= 2.0 then
-                if UseTrinket1() then
-                    return false
-                end
-            end
-        end
-        if cfg.useTrinket2 and not cfg.trinket2WithCooldowns then
-            if combatTime >= 2.0 then
-                if UseTrinket2() then
-                    return false
-                end
-            end
-        end
-        
-        -- 💊 爆发药水（跟随爆发技能）
-        if cfg.useCombatPotion and cfg.combatPotionWithCooldowns then
-            if combatTime >= 2.0 and anyCooldownReady and shouldUseMajorCooldown then
-                if player.melee(target) then
-                    UseCombatPotion()
-                end
-            end
-        end
-    end
-    
-    -- 第2步：等待饰品引导完成
-    if IsTrinketChanneling() then
-        -- 饰品正在引导，不使用任何技能，避免打断
-        return false
-    end
-    
-    -- 💊 爆发药水（如果不跟随爆发技能，独立使用）
-    if cfg.useCombatPotion and not cfg.combatPotionWithCooldowns then
-        if UseCombatPotion() then return true end
-    end
-    
-    -- 🔥 大技能（鲁莽、天神下凡）
-    -- ✅ 优化：只保留近战距离判断
-    if player.melee(target) then
-        if S.Recklessness:execute() then return true end
-        if S.Avatar:execute() then return true end
-    end
-    
-    -- 雷鸣之吼 (激怒状态下使用，不受单体/AOE限制)
-    if S.ThunderousRoar:execute() then return true end
-    
-    ------------------------------------------------------------------------
-    -- 5目标及以上: AOE变量手法 (大秘境实战优先级)
-    ------------------------------------------------------------------------
-    if enemies >= cfg.aoeThreshold5 then
-        
-        local bladestormCD = S.Bladestorm:getcd() or 999
-        local rbCharges = S.RagingBlow:charges() or 0
-        
-        -- 🔄 旋风斩管理：优先保持4层
-        -- 无层数 OR (激怒持续中 且 层数<4 且 即将消失)
-        if mcStacks == 0 then
-            -- ✅ 优化：使用 Aurora 内置的施法历史追踪
-            if S.Whirlwind:timeSinceLastCast() >= 1.5 then
-                if S.Whirlwind:execute() then
-                    return true
-                end
-            end
-        elseif enrageUp and mcStacks < 4 and mcRem <= 2.0 then
-            -- 激怒状态下，旋风斩快掉了就补
-            if S.Whirlwind:execute() then return true end
-        end
-        
-        -- ⚔️ 猝死四要素（智能延后策略）
-        -- 如果剑刃风暴CD好了且不打算用，可以只用猝死延续殒命在即
-        local shouldDelaySuddenDeath = false
-        if bladestormCD == 0 then
-            -- 剑刃风暴好了，评估是否延后猝死
-            -- 如果旋风斩层数很高 (≥3) 且怒击有充能，优先打怒击
-            if mcStacks >= 3 and rbCharges >= 1 then
-                shouldDelaySuddenDeath = true
-            end
-        end
-        
-        if not shouldDelaySuddenDeath and SuddenDeath4Factors() then
-            if S.Execute:execute() then return true end
-        end
-        
-        -- 💥 激怒维持：允许怒气溢出，但要综合考虑续激怒和顺劈层数
-        -- 条件：无激怒 OR 激怒快结束 OR 怒气极高(≥125)
-        if not enrageUp or enrageRem < 1.0 or rage >= 125 then
-            if S.Rampage:execute() then return true end
-        end
-        
-        -- 🌀 剑刃风暴（尽量4层顺劈进入）
-        if enrageUp then
-            -- 优先：4层顺劈进入剑刃风暴
-            if mcStacks >= 4 then
-                if S.Bladestorm:execute() then return true end
-            -- 次优：至少2层才考虑
-            elseif mcStacks >= 2 then
-                if S.Bladestorm:execute() then return true end
-            end
-        end
-        
-        -- 🔴 优先怒击（5目标以上最高单GCD伤害）
-        -- 在激怒覆盖的前提下允许怒气溢出
-        -- 但要平衡顺劈层数和激怒续上
-        if enrageUp then
-            -- 如果有2层充能，多打1-2个怒击
-            if rbCharges >= 2 then
-                if S.RagingBlow:execute() then return true end
-            -- 如果旋风斩层数够，打怒击
-            elseif mcStacks >= 2 and rbCharges >= 1 then
-                if S.RagingBlow:execute() then return true end
-            end
-        end
-        
-        -- 🎯 收尾打印记怪（剑刃风暴CD期间尤其重要）
-        -- 怪物带2层印记死亡会浪费10秒剑刃风暴CD
-        if ShouldFinishWithExecute() then
-            if S.Execute:execute() then return true end
-        end
-        
-        -- ⚡ 嗜血填充（仅在激怒快结束或怒击CD时使用）
-        -- 避免过度使用嗜血，优先使用怒击
-        if not enrageUp or enrageRem < 2.0 or rbCharges == 0 then
-            if S.Bloodthirst:execute() then return true end
-        end
-        
-        -- 🔄 补充旋风斩（如果之前没补上）
-        if mcStacks < 2 then
-            if S.Whirlwind:execute() then return true end
-        end
-        
-        -- 最后的怒击
-        if S.RagingBlow:execute() then return true end
-        
-    ------------------------------------------------------------------------
-    -- 2-4目标: 单体优先级 + 补旋风斩
-    -- 📋 手法说明：和纯单体一模一样，只是补旋风斩层数
-    ------------------------------------------------------------------------
-    elseif enemies >= 2 then
-        
-        -- 🔄 补旋风斩：保持顺劈buff
-        -- 无层数时立即补，有层数但快消失时也补
-        if mcStacks == 0 then
-            -- ✅ 优化：使用 Aurora 内置的施法历史追踪
-            if S.Whirlwind:timeSinceLastCast() >= 1.5 then
-                if S.Whirlwind:execute() then
-                    return true
-                end
-            end
-        elseif mcRem > 0 and mcRem <= 2.5 then
-            if S.Whirlwind:execute() then return true end
-        end
-        
-        -- ⚔️ 猝死五要素
-        if SuddenDeath5Factors() then
-            if S.Execute:execute() then return true end
-        end
-        
-        -- 💥 激怒维持
-        if not enrageUp or enrageRem < 1.0 or rage >= 115 then
-            if S.Rampage:execute() then return true end
-        end
-        
-        -- 🌀 剑刃风暴
-        if enrageUp then
-            if S.Bladestorm:execute() then return true end
-        end
-        
-        -- 🎯 处决期斩杀 (20%血线)
-        if target.healthpercent <= 20 and enrageUp and rage < 100 then
-            if S.Execute:execute() then return true end
-        end
-        
-        -- 🔴 怒击
-        if S.RagingBlow:execute() then return true end
-        
-        -- ⚡ 嗜血（仅在激怒快结束或怒击CD时使用）
-        if not enrageUp or enrageRem < 2.0 or S.RagingBlow:getcd() > 0.5 then
-            if S.Bloodthirst:execute() then return true end
-        end
-        
-    ------------------------------------------------------------------------
-    -- 单体循环
-    -- 📋 手法说明：纯单体优先级，不需要旋风斩
-    ------------------------------------------------------------------------
-    else
-        
-        -- ⚔️ 猝死五要素
-        if SuddenDeath5Factors() then
-            if S.Execute:execute() then return true end
-        end
-        
-        -- 💥 激怒维持
-        if not enrageUp or enrageRem < 1.0 or rage >= 115 then
-            if S.Rampage:execute() then return true end
-        end
-        
-        -- 🌀 剑刃风暴
-        if enrageUp then
-            if S.Bladestorm:execute() then return true end
-        end
-        
-        -- 🎯 处决期斩杀 (20%血线)
-        if target.healthpercent <= 20 and enrageUp then
-            if S.Execute:execute() then return true end
-        end
-        
-        -- 🔴 怒击
-        if S.RagingBlow:execute() then return true end
-        
-        -- ⚡ 嗜血（仅在激怒快结束或怒击CD时使用）
-        if not enrageUp or enrageRem < 2.0 or S.RagingBlow:getcd() > 0.5 then
-            if S.Bloodthirst:execute() then return true end
-        end
-    end
-    
-    -- 兜底（紧急情况下的最后选择）
-    if S.Bloodthirst:execute() then return true end
-    
-    return false
-end
 
 ------------------------------------------------------------------------
 -- 脱战逻辑
@@ -2703,17 +2083,6 @@ end
 ------------------------------------------------------------------------
 -- 主路由函数（根据用户选择的循环模式调用对应手法）
 ------------------------------------------------------------------------
-local function MainRotation()
-    local rotationMode = cfg.rotationMode or 1
-    
-    if rotationMode == 2 then
-        -- SimC模拟手法
-        return SimCRotation()
-    else
-        -- 主播手法（默认）
-        return Dps()
-    end
-end
 
 ------------------------------------------------------------------------
 -- 注册循环

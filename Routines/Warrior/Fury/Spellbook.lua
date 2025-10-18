@@ -9,60 +9,127 @@ local NewSpell = Aurora.SpellHandler.NewSpell
 
 Aurora.SpellHandler.PopulateSpellbook({
     spells = {
-        -- 主要输出技能（近战）- 只使用 ignoreFacing 加快施法
+        -- ⚡ 极限优化：主要输出技能（近战）
         Bloodthirst = NewSpell(23881, {
-            ignoreFacing = true,  -- 忽略朝向检查，直接施放
+            ignoreFacing = true,   -- 忽略朝向检查
+            ignoreMoving = true,   -- 移动中可施放
+            queued = true,         -- 允许技能排队
         }),
         RagingBlow = NewSpell(85288, {
             ignoreFacing = true,
+            ignoreMoving = true,   -- 移动中可施放
+            queued = true,         -- 允许技能排队
         }),
         Rampage = NewSpell(184367, {
             ignoreFacing = true,
+            ignoreMoving = true,   -- 移动中可施放
+            queued = true,
         }),
         Execute = NewSpell(5308, {
             ignoreFacing = true,
+            ignoreMoving = true,   -- 移动中可施放
+            queued = true,
         }),
         Whirlwind = NewSpell(190411, {
-            ignoreFacing = true,  -- AOE技能，忽略朝向
+            ignoreFacing = true,
+            ignoreMoving = true,   -- 移动中可施放
+            queued = true,         -- AOE技能也允许排队
         }),
         
-        -- 大技能
-        Recklessness = NewSpell(1719),
-        Avatar = NewSpell(107574),
-        Bladestorm = NewSpell(446035, {
+        -- ⚡⚡ 极限优化：大技能（爆发CD）
+        Recklessness = NewSpell(1719, {
+            queued = true,         -- 技能排队
             ignoreFacing = true,
+            ignoreMoving = true,   -- 移动中可施放
+            ignoreCasting = true,  -- ⚡ 可打断当前施法立即使用
+        }),
+        Avatar = NewSpell(107574, {
+            queued = true,
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,  -- ⚡ 可打断当前施法立即使用
+        }),
+        Bladestorm = NewSpell(446035, {
+            queued = true,
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,  -- ⚡ 可打断当前施法立即使用
         }),
         ThunderousRoar = NewSpell(384318, {
+            queued = true,
             ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,  -- ⚡ 可打断当前施法立即使用
         }),
         
-        -- 辅助技能
-        EnragingRegeneration = NewSpell(184364),
-        VictoryRush = NewSpell(34428),  -- 胜利在望（回复30%生命值）
-        SpellReflection = NewSpell(23920), -- 法术反射（反射法术，25秒CD）
-        BattleShout = NewSpell(6673),   -- 战斗怒吼（队友增益BUFF）
+        -- ⚡ 极限优化：辅助技能（生存/防御）
+        EnragingRegeneration = NewSpell(184364, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 紧急生存技能，打断当前施法
+            ignoreChanneling = true,  -- ⚡ 打断引导技能
+        }),
+        VictoryRush = NewSpell(34428, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 紧急生存技能
+            ignoreChanneling = true,
+        }),
+        SpellReflection = NewSpell(23920, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 紧急防御技能
+            ignoreChanneling = true,
+        }),
+        BattleShout = NewSpell(6673, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+        }),
         
-        -- 中断技能
-        Pummel = NewSpell(6552, {       -- 拳击（主要中断，15码，15秒CD）
+        -- ⚡ 极限优化：中断技能（打断优先级最高）
+        Pummel = NewSpell(6552, {
             ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 打断必须能打断当前施法
+            ignoreChanneling = true,
+            queued = true,            -- ⚡ 允许排队，即时响应
         }),
-        StormBolt = NewSpell(107570),   -- 风暴之锤（远程中断，40码，30秒CD）
-        Shockwave = NewSpell(46968, {   -- 震荡波（AOE中断+眩晕，10码，40秒CD）
+        StormBolt = NewSpell(107570, {
             ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,
+            ignoreChanneling = true,
+            queued = true,
+        }),
+        Shockwave = NewSpell(46968, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,
+            ignoreChanneling = true,
+            queued = true,
         }),
         
-        -- SimC相关技能
-        Bloodbath = NewSpell(335096, {  -- 浴血
+        -- ⚡ 极限优化：SimC相关技能
+        Bloodbath = NewSpell(335096, {
             ignoreFacing = true,
+            ignoreMoving = true,
+            queued = true,         -- ⚡ 允许排队
         }),
-        Onslaught = NewSpell(315720, {  -- 猛攻
+        Onslaught = NewSpell(315720, {
             ignoreFacing = true,
+            ignoreMoving = true,
+            queued = true,         -- ⚡ 允许排队
         }),
-        ChampionsSpear = NewSpell(376079, { -- 冠军之矛
+        ChampionsSpear = NewSpell(376079, {
             isSkillshot = true,
-        }),
-        OdynsFury = NewSpell(385059, {  -- 奥丁之怒
             ignoreFacing = true,
+            ignoreMoving = true,
+            queued = true,         -- ⚡ 技能射击也允许排队
+        }),
+        OdynsFury = NewSpell(385059, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            queued = true,         -- ⚡ AOE爆发技能允许排队
         }),
         
         -- 天赋检测（虚拟技能，用于isknown判断）
