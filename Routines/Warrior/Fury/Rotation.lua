@@ -65,9 +65,13 @@ L.UseSpellReflection = isZhCN and "使用法术反射" or "Use Spell Reflection"
 L.SpellReflectionTooltip = isZhCN and "怪物对你施法时，且打断CD会自动反射" or "Auto-reflect when enemy casts on you and interrupts on CD"
 L.CastProgress = isZhCN and "施法进度 (%)" or "Cast Progress (%)"
 L.SpellReflectionCastTooltip = isZhCN and "怪物施法进度 ≥ 此值才反射\n推荐: 60% 避免过早使用浪费技能" or "Only reflect when cast ≥ this %\nRecommended: 60%"
-L.WhirlwindRange = isZhCN and "旋风斩范围" or "Whirlwind Range"
-L.ShowWhirlwindRange = isZhCN and "显示旋风斩8码范围圈" or "Show Whirlwind 8-yard range circle"
+L.WhirlwindRange = isZhCN and "掠武风暴范围" or "Bladestorm Range"
+L.ShowWhirlwindRange = isZhCN and "显示掠武风暴范围圈" or "Show Bladestorm range circle"
 L.RangeOpacity = isZhCN and "圆圈透明度" or "Circle Opacity"
+L.UseRallyCry = isZhCN and "使用集结呐喊" or "Use Rally Cry"
+L.RallyCryTooltip = isZhCN and "当指定人数血量低于阈值时自动释放" or "Auto-use when set number of players below threshold"
+L.RallyCryPlayers = isZhCN and "队友数量" or "Party Members"
+L.RallyCryPlayersTooltip = isZhCN and "当多少人血量低于阈值时释放" or "Number of low HP players to trigger"
 
 -- Interrupt
 L.UseAuroraList = isZhCN and "使用 Aurora 列表" or "Use Aurora List"
@@ -277,34 +281,20 @@ local cfg = setmetatable({}, {
 
 -- Aurora 爆发开关检查函数
 local function ShouldUseCooldowns()
-    -- 1. 检查预留爆发选项
-    -- 如果开启了"预留爆发"，且周围敌人数量 <= 2，则不使用爆发技能
-    -- 但是Boss除外（Boss战始终可以使用爆发）
-    if cfg.reserveBurst then
-        local enemies = player.enemiesaround(8) or 0
-        if enemies <= 2 then
-            -- 检查当前目标是否为Boss（使用Aurora标准方法）
-            -- target.isboss: 单位是否是Boss
-            local isBoss = target and target.exists and target.isboss
-            
-            -- 如果不是Boss，则不使用爆发（保留爆发）
-            if not isBoss then
-                return false
-            end
-        end
-    end
+    -- ⚠️ 预留爆发功能已移除（默认关闭）
+    -- 如需恢复，请在GUI中重新添加选项
     
-    -- 2. 优先使用 Aurora 内置的 Cooldown Toggle
+    -- 1. 优先使用 Aurora 内置的 Cooldown Toggle
     if Aurora.Rotation and Aurora.Rotation.Cooldown then
         return Aurora.Rotation.Cooldown:GetValue()
     end
     
-    -- 3. 备用：检查 Aurora.UseCooldowns
+    -- 2. 备用：检查 Aurora.UseCooldowns
     if Aurora and Aurora.UseCooldowns ~= nil then
         return Aurora.UseCooldowns
     end
     
-    -- 4. 最后备用：使用手动配置
+    -- 3. 最后备用：使用手动配置
     return cfg.manualCooldownsEnabled
 end
 
@@ -1592,6 +1582,7 @@ local function SimCRotationV2()
     if UseHealthstone() then return true end
     if UseHealingPotion() then return true end
     if S.EnragingRegeneration:execute() then return true end
+    if S.RallyCry:execute() then return true end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【自动目标切换】当目标不存在或超出范围时，自动切换
@@ -2391,7 +2382,7 @@ if Aurora.Macro then
             text = Aurora.texture(444775, 14) .. " " .. L.ShowWhirlwindRange,
             key = "fury.whirlwind.showRange",
             default = true,
-            tooltip = (isZhCN and "战斗中在脚下显示5码范围圆圈\n帮助你站在怪物中间打出最高伤害" or "Show 5-yard range circle in combat\nHelps you position for maximum damage"),
+            tooltip = (isZhCN and "战斗中在脚下显示范围圆圈\n帮助你站在怪物中间打出最高伤害" or "Show range circle in combat\nHelps you position for maximum damage"),
             onChange = function(self, checked)
                 cfg.showWhirlwindRange = checked
                 print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.ShowWhirlwindRange .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
@@ -2408,6 +2399,48 @@ if Aurora.Macro then
             onChange = function(self, value)
                 cfg.whirlwindRangeOpacity = value
                 print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.RangeOpacity .. ": " .. value)
+            end
+        })
+        
+        -- 集结呐喊
+        :Checkbox({
+            text = Aurora.texture(97462, 14) .. " " .. L.UseRallyCry,
+            key = "fury.rallyCry.enabled",
+            default = true,
+            tooltip = L.RallyCryTooltip,
+            onChange = function(self, checked)
+                cfg.useRallyCry = checked
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseRallyCry .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+            end
+        })
+        :Dropdown({
+            text = L.RallyCryPlayers,
+            key = "fury.rallyCry.playerCount",
+            default = 2,
+            options = {
+                {value = 1, text = "1"},
+                {value = 2, text = "2"},
+                {value = 3, text = "3"},
+                {value = 4, text = "4"},
+                {value = 5, text = "5"}
+            },
+            tooltip = L.RallyCryPlayersTooltip,
+            onChange = function(self, value)
+                cfg.rallyCryPlayerCount = value
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.RallyCryPlayers .. ": " .. value)
+            end
+        })
+        :Slider({
+            text = L.HealthThreshold,
+            key = "fury.rallyCry.threshold",
+            default = 50,
+            min = 20,
+            max = 80,
+            step = 5,
+            tooltip = (isZhCN and "队友血量低于此值时计入低血量人数" or "Players below this HP count as low health"),
+            onChange = function(self, value)
+                cfg.rallyCryThreshold = value
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseRallyCry .. " " .. L.HealthThreshold .. ": " .. value .. "%")
             end
         })
     
@@ -2504,16 +2537,6 @@ if Aurora.Macro then
     -- 爆发技能标签页
     gui:Tab(L.TabBurst)
         :Header({ text = Aurora.texture(1719, 16) .. " " .. L.BurstHeader })
-        :Checkbox({
-            text = Aurora.texture(18499, 14) .. " " .. L.ReserveBurst,
-            key = "fury.cooldowns.reserveBurst",
-            default = false,
-            tooltip = L.ReserveBurstTooltip,
-            onChange = function(self, checked)
-                cfg.reserveBurst = checked
-            end
-        })
-        :Text({ text = "", size = 5 })
         -- 鲁莽
         :Checkbox({
             text = Aurora.texture(1719, 14) .. " " .. L.UseRecklessness,
@@ -2642,6 +2665,11 @@ if Aurora.Macro then
     Aurora.Config:SetDefault("fury.whirlwind.rangeOpacity", 150)
     Aurora.Config:SetDefault("fury.debug.enabled", false)
     
+    -- 集结呐喊配置默认值
+    Aurora.Config:SetDefault("fury.rallyCry.enabled", true)
+    Aurora.Config:SetDefault("fury.rallyCry.playerCount", 2)
+    Aurora.Config:SetDefault("fury.rallyCry.threshold", 50)
+    
     -- 中断配置默认值
     Aurora.Config:SetDefault("fury.interrupt.enabled", true)
     Aurora.Config:SetDefault("fury.interrupt.withList", true)
@@ -2676,6 +2704,11 @@ if Aurora.Macro then
     cfg.showWhirlwindRange = Aurora.Config:Read("fury.whirlwind.showRange")
     cfg.whirlwindRangeOpacity = Aurora.Config:Read("fury.whirlwind.rangeOpacity")
     cfg.debug = Aurora.Config:Read("fury.debug.enabled")
+    
+    -- 加载集结呐喊配置
+    cfg.useRallyCry = Aurora.Config:Read("fury.rallyCry.enabled")
+    cfg.rallyCryPlayerCount = Aurora.Config:Read("fury.rallyCry.playerCount")
+    cfg.rallyCryThreshold = Aurora.Config:Read("fury.rallyCry.threshold")
     
     -- 加载中断配置
     cfg.useInterrupt = Aurora.Config:Read("fury.interrupt.enabled")

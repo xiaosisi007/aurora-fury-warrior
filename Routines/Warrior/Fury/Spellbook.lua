@@ -81,6 +81,12 @@ Aurora.SpellHandler.PopulateSpellbook({
             ignoreCasting = true,     -- ⚡ 紧急防御技能
             ignoreChanneling = true,
         }),
+        RallyCry = NewSpell(97462, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 紧急团队防御技能
+            ignoreChanneling = true,
+        }),
         BattleShout = NewSpell(6673, {
             ignoreFacing = true,
             ignoreMoving = true,
