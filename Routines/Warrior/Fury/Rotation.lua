@@ -687,6 +687,10 @@ end
 ------------------------------------------------------------------------
 -- 当当前目标不在攻击范围时，自动切换到最近的可攻击目标
 
+-- 上次切换目标的时间戳（用于防止频繁切换）
+local lastTargetSwitchTime = 0
+local TARGET_SWITCH_COOLDOWN = 0.2  -- 200毫秒切换冷却
+
 local function AutoTargetSwitch()
     -- 检查状态栏按钮是否启用（优先）
     if Aurora.Rotation.AutoTargetToggle and not Aurora.Rotation.AutoTargetToggle:GetValue() then
@@ -695,6 +699,12 @@ local function AutoTargetSwitch()
     
     -- 备用：检查配置是否启用
     if not Aurora.Rotation.AutoTargetToggle and not cfg.autoTarget then
+        return false
+    end
+    
+    -- ⚡ 防止频繁切换（性能优化）
+    local currentTime = GetTime()
+    if currentTime - lastTargetSwitchTime < TARGET_SWITCH_COOLDOWN then
         return false
     end
     
@@ -730,7 +740,24 @@ local function AutoTargetSwitch()
         end
         
         player.settarget(nearestEnemy)
+        lastTargetSwitchTime = currentTime  -- 更新切换时间戳
         return true
+    end
+    
+    return false
+end
+
+-- ⚡ 实时目标有效性检查（在技能释放前调用）
+local function EnsureValidTarget()
+    -- 如果当前目标有效且在范围内，直接返回
+    if target.exists and target.alive and target.enemy and player.melee(target) then
+        return true
+    end
+    
+    -- 目标无效或不在范围，尝试自动切换
+    if AutoTargetSwitch() then
+        -- 切换成功，重新检查目标
+        return target.exists and target.alive and target.enemy
     end
     
     return false
@@ -1636,6 +1663,9 @@ local function SimCRotationV2()
         end
     end
     
+    -- ⚡ 实时检测：进入技能循环前再次确认目标有效性
+    EnsureValidTarget()
+    
     -- 饰品和药水（受爆发开关控制）
     if ShouldUseCooldowns() then
         local recklessnessReady = S.Recklessness:ready() and cfg.useRecklessness
@@ -1950,6 +1980,9 @@ local function SimCRotationV2()
         end
     end
     
+    -- ⚡ 实时检测：常规循环中段，再次确认目标有效性
+    EnsureValidTarget()
+    
     -- 20. Crushing Blow - 第二次
     if S.RagingBlow:cast(target) then return true end
     
@@ -1968,6 +2001,9 @@ local function SimCRotationV2()
     if S.RagingBlow:charges() == 2 then
         if S.RagingBlow:cast(target) then return true end
     end
+    
+    -- ⚡ 实时检测：填充技能前，最后一次确认目标有效性
+    EnsureValidTarget()
     
     -- 25. Onslaught - Tenderize
     -- ✅ 优化：删除冗余ready()检查
