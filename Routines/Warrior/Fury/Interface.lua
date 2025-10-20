@@ -4,6 +4,11 @@
 
 local MythicWarrior = ...
 
+-- 确保命名空间已初始化
+if not MythicWarrior then
+    MythicWarrior = {}
+end
+
 -- 获取玩家和技能书
 local player = Aurora.UnitManager:Get("player")
 local S = Aurora.SpellHandler.Spellbooks.warrior["2"].TTFury.spells

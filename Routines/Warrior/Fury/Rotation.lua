@@ -2426,8 +2426,12 @@ if Aurora.Macro then
             },
             tooltip = L.RallyCryPlayersTooltip,
             onChange = function(self, value)
+                local oldValue = cfg.rallyCryPlayerCount
                 cfg.rallyCryPlayerCount = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.RallyCryPlayers .. ": " .. value)
+                -- 只在值真正改变时打印（避免初始化时打印）
+                if oldValue and oldValue ~= value then
+                    print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.RallyCryPlayers .. ": " .. value)
+                end
             end
         })
         :Slider({
@@ -2439,8 +2443,12 @@ if Aurora.Macro then
             step = 5,
             tooltip = (isZhCN and "队友血量低于此值时计入低血量人数" or "Players below this HP count as low health"),
             onChange = function(self, value)
+                local oldValue = cfg.rallyCryThreshold
                 cfg.rallyCryThreshold = value
-                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseRallyCry .. " " .. L.HealthThreshold .. ": " .. value .. "%")
+                -- 只在值真正改变时打印（避免初始化时打印）
+                if oldValue and oldValue ~= value then
+                    print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.UseRallyCry .. " " .. L.HealthThreshold .. ": " .. value .. "%")
+                end
             end
         })
     

@@ -87,6 +87,18 @@ Aurora.SpellHandler.PopulateSpellbook({
             ignoreCasting = true,     -- ⚡ 紧急团队防御技能
             ignoreChanneling = true,
         }),
+        DefensiveStance = NewSpell(386208, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 紧急防御姿态，减伤15%
+            ignoreChanneling = true,
+        }),
+        BerserkerStance = NewSpell(386196, {
+            ignoreFacing = true,
+            ignoreMoving = true,
+            ignoreCasting = true,     -- ⚡ 狂暴姿态，主输出姿态
+            ignoreChanneling = true,
+        }),
         BattleShout = NewSpell(6673, {
             ignoreFacing = true,
             ignoreMoving = true,
@@ -139,7 +151,7 @@ Aurora.SpellHandler.PopulateSpellbook({
         }),
         
         -- 天赋检测（虚拟技能，用于isknown判断）
-        RecklessAbandon = NewSpell(396749),    -- 鲁莽放弃
+        RecklessAbandon = NewSpell(396749),    -- 肆意放纵
         AngerManagement = NewSpell(152278),    -- 怒气管理
         TitanicRage = NewSpell(394329),        -- 泰坦之怒
         Tenderize = NewSpell(389774),          -- 温柔
