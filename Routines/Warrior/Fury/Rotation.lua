@@ -9,6 +9,35 @@ local isZhCN = (clientLocale == "zhCN" or clientLocale == "zhTW")
 -- 本地化字符串表
 local L = {}
 L.RoutineName = isZhCN and "TT狂战" or "TT Fury"
+
+------------------------------------------------------------------------
+-- 版本更新系统
+------------------------------------------------------------------------
+-- 当前版本号（格式：YYYYMMDD）
+local CURRENT_VERSION = "20251022"
+
+-- 更新内容（由一键脚本自动更新）
+-- UPDATE_CONTENT_START - 不要删除此标记
+local UPDATE_CONTENT = [[
+========================================
+         TT狂战 更新通告
+========================================
+
+版本：2025.10.22
+
+【新功能】
+* 强制爆发按钮 - 支持 /aurora toggle burst 宏命令
+
+
+【优化】
+* 单体循环优化 - 嗜血只在没有技能的时候填充
+
+【说明】
+强制爆发，不管是按钮还是宏命令启动，3秒后都会自动关闭
+
+========================================
+]]
+-- UPDATE_CONTENT_END - 不要删除此标记
 L.TabIntro = isZhCN and "简介" or "Introduction"
 L.TabBurst = isZhCN and "爆发技能" or "Burst Skills"
 L.TabAuxiliary = isZhCN and "辅助技能" or "Auxiliary Skills"
@@ -1776,11 +1805,16 @@ local function SimCRotationV2()
     
     -- ====== 完整SimC APL（V2版本，包含所有Bloodthirst）======
     
-    -- 1. Recklessness + Avatar
+    -- 1. Recklessness + Avatar + Thunderous Roar（雷鸣之吼和爆发对齐）
     -- ✅ 优化：只保留近战距离判断
     if player.melee(target) then
         if S.Recklessness:execute() then return true end
         if S.Avatar:execute() then return true end
+        
+        -- 雷鸣之吼：和爆发技能对齐使用（有Recklessness或Avatar时）
+        if enrageUp and (player.aura(A.Recklessness) or player.aura(A.Avatar)) then
+            if S.ThunderousRoar:execute() then return true end
+        end
     end
     
     -- 2. Execute - AshenJuggernaut紧急处理（规则5：灰烬即将消失 + 猝死）
@@ -1805,11 +1839,6 @@ local function SimCRotationV2()
                 if S.Execute:cast(target) then return true end
             end
         end
-    end
-    
-    -- 4. Thunderous Roar - AOE激怒
-    if enrageUp and enemies > 1 then
-        if S.ThunderousRoar:execute() then return true end
     end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2138,9 +2167,7 @@ local function SimCRotationV2()
         end
     end
     
-    -- 31. Thunderous Roar
-    if S.ThunderousRoar:execute() then return true end
-    
+    -- 31. Thunderous Roar (已移至优先级1，和爆发对齐)
     -- 32. Wrecking Throw
     -- (通常不在循环中实现)
     
@@ -2899,8 +2926,29 @@ if Aurora.Macro then
         end
     })
     
+    -- 5. 自动目标切换按钮
+    Aurora.Rotation.AutoTargetToggle = Aurora:AddGlobalToggle({
+        label = "自动目标",
+        var = "fury_auto_target",
+        icon = 132336,  -- 致命打击图标
+        tooltip = "自动目标切换\n\n启用后:\n• 目标死亡/不存在 → 自动选择新目标\n• 目标超出近战范围 → 切换到最近的敌人\n• 自动检测视线（LOS）\n\n当前范围: 8码近战范围",
+        onClick = function(value)
+            cfg.autoTarget = value
+            Aurora.Config:Write("fury.autoTarget", value)
+            if value then
+                print("|cff00ff00[自动目标]|r 已启用")
+            else
+                print("|cffff0000[自动目标]|r 已禁用")
+            end
+        end
+    })
+    
     -- 设置初始值
-    -- 注意：Burst的状态由框架自动管理，默认为false
+    -- 强制爆发按钮：默认关闭（每次加载时重置）
+    if Aurora.Rotation.Burst then
+        Aurora.Rotation.Burst:SetValue(false)
+        ForceBurstTimer = 0  -- 重置定时器
+    end
     
     if Aurora.Rotation.StormBoltToggle then
         Aurora.Rotation.StormBoltToggle:SetValue(cfg.useStormBolt)
@@ -2914,10 +2962,58 @@ if Aurora.Macro then
         Aurora.Rotation.BattleShoutToggle:SetValue(cfg.useBattleShout)
     end
     
+    if Aurora.Rotation.AutoTargetToggle then
+        Aurora.Rotation.AutoTargetToggle:SetValue(cfg.autoTarget)
+    end
+    
     -- print("|cff00ff00[TT狂战]|r 状态框架切换按钮已创建:")
     -- print("  |cff00ffff风暴之锤|r - 快速切换风暴之锤打断")
     -- print("  |cff00ffff震荡波|r - 快速切换震荡波打断")
     -- print("  |cff00ffff战斗怒吼|r - 快速切换战斗怒吼BUFF")
+    
+    ------------------------------------------------------------------------
+    -- 更新通告弹窗系统
+    ------------------------------------------------------------------------
+    
+    -- 注册更新通告弹窗
+    local POPUP_TEXT = (isZhCN and 
+        "TT狂战 更新通告\n\n版本：2025.10.22\n\n【新功能】\n强制爆发按钮\n\n【优化】\n单体循环优化 - 嗜血只在没有技能的时候填充\n\n【说明】\n强制爆发，不管是按钮还是宏命令启动，3秒后都会自动关闭" or
+        "TT Fury Updated\n\nVersion: 20251022\n\nCheck Rotation.lua for details")
+    
+        StaticPopupDialogs["FURY_UPDATE_NOTICE"] = {
+        text = POPUP_TEXT,
+        button1 = (isZhCN and "知道了" or "OK"),
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    
+    -- 检查并显示更新通告
+    local function CheckAndShowUpdateNotice()
+        -- 强制爆发按钮：每次加载默认关闭
+        if Aurora.Rotation.Burst then
+            Aurora.Rotation.Burst:SetValue(false)
+            ForceBurstTimer = 0
+        end
+        
+        -- 读取上次查看的版本
+        local lastVersion = Aurora.Config:Read("fury.lastViewedVersion") or "0"
+        
+        -- 如果当前版本比上次查看的版本新，则显示更新通告
+        if CURRENT_VERSION > lastVersion then
+            C_Timer.After(1, function()
+                StaticPopup_Show("FURY_UPDATE_NOTICE")
+                Aurora.Config:Write("fury.lastViewedVersion", CURRENT_VERSION)
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "已加载！版本：" or "Loaded! Version: ") .. CURRENT_VERSION)
+            end)
+        else
+            print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "已加载！版本：" or "Loaded! Version: ") .. CURRENT_VERSION)
+        end
+    end
+    
+    -- 在加载完成后检查更新
+    CheckAndShowUpdateNotice()
     
     ------------------------------------------------------------------------
     -- 天赋配置弹窗系统
@@ -3706,46 +3802,6 @@ end)
 -- print("|cff00ff00[TT狂战]|r 专精变化热重载系统已启用")
 -- print("|cffffff00[提示]|r 切换天赋后将自动重载界面")
 
-------------------------------------------------------------------------
--- 状态框架 - 自动目标切换按钮
-------------------------------------------------------------------------
--- 使用Aurora全局状态框架添加可视化切换按钮
--- 注意：Interrupt 按钮由 Aurora 框架自动创建，无需手动添加
-
--- 添加自动目标切换按钮到状态栏
-Aurora.Rotation.AutoTargetToggle = Aurora:AddGlobalToggle({
-    label = "自动目标",              -- 显示文本（最多11个字符）
-    var = "fury_auto_target",        -- 唯一标识符
-    icon = 132336,                   -- 致命打击图标（Ability_Warrior_Savageblow - 红色战士拳头）
-    tooltip = "自动目标切换\n\n启用后:\n• 目标死亡/不存在 → 自动选择新目标\n• 目标超出近战范围 → 切换到最近的敌人\n• 自动检测视线（LOS）\n\n当前范围: 8码近战范围",
-    onClick = function(value)
-        -- 同步到配置系统
-        Aurora.Config:Write("fury.autoTarget", value)
-        
-        -- 显示状态提示
-        if value then
-            print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-            print("|cff00ff00[自动目标]|r 已启用")
-            print("|cff00ffff- 目标死亡 → 自动切换|r")
-            print("|cff00ffff- 超出范围 → 切换最近目标|r")
-            print("|cff00ffff- 自动检测视线|r")
-            print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-        else
-            print("|cffff0000━━━━━━━━━━━━━━━━━━━━━━━━|r")
-            print("|cffff0000[自动目标]|r 已禁用")
-            print("|cff808080需要手动切换目标|r")
-            print("|cffff0000━━━━━━━━━━━━━━━━━━━━━━━━|r")
-        end
-    end
-})
-
--- 初始化：从配置读取状态并同步到状态栏
-C_Timer.After(0.5, function()
-    local savedState = Aurora.Config:Read("fury.autoTarget")
-    if savedState ~= nil then
-        Aurora.Rotation.AutoTargetToggle:SetValue(savedState)
-    end
-end)
 
 ------------------------------------------------------------------------
 -- 快捷命令系统 - 自动目标切换控制
