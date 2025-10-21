@@ -87,6 +87,8 @@ L.ShockwaveTooltip = isZhCN and "AOE打断，40秒CD，10码范围\n读条怪物
 L.CastingEnemies = isZhCN and "读条怪物数量" or "Casting Enemies"
 
 -- Burst Skills
+L.ForceBurst = isZhCN and "强制爆发" or "Force Burst"
+L.ForceBurstTooltip = isZhCN and "立即使用所有爆发技能！\n\n包含:\n- 剑刃风暴\n- 鲁莽\n- 天神下凡\n- 饰品\n\n启用后3秒自动关闭\n命令: /aurora burst" or "Force use all burst skills!\n\nIncludes:\n- Bladestorm\n- Recklessness\n- Avatar\n- Trinkets\n\nAuto-disables after 3s\nCommand: /aurora burst"
 L.ReserveBurst = isZhCN and "预留爆发" or "Reserve Burst"
 L.ReserveBurstTooltip = isZhCN and "AOE小怪只剩1-2只时不使用爆发技能\n\n作用:\n- 避免在残血小怪上浪费大技能CD\n- 保留爆发留给Boss或下一波小怪\n\n适用场景:\n- 大秘境(M+)多波次小怪\n- 需要合理分配CD的战斗\n\n建议: 开启" or "Don't use burst on 1-2 remaining enemies\n\nBenefits:\n- Avoid wasting CDs on low-HP mobs\n- Save burst for Boss or next pack\n\nUse cases:\n- M+ multi-pack encounters\n- Fights requiring CD management\n\nRecommended: ON"
 L.UseRecklessness = isZhCN and "使用鲁莽" or "Use Recklessness"
@@ -111,6 +113,11 @@ L.ToastWelcome = isZhCN and "欢迎, %s! 输入 /fury help 查看命令" or "Wel
 L.ToastUpdate = isZhCN and "优化：性能提升 | 添加焕生治疗药水" or "Optimized: Performance boost | Added Algari Rejuvenation Potion"
 
 local player = Aurora.UnitManager:Get("player")
+
+------------------------------------------------------------------------
+-- 强制爆发系统
+------------------------------------------------------------------------
+local ForceBurstTimer = 0  -- 强制爆发定时器（3秒后自动关闭）
 
 -- 检查是否为狂怒战士
 if player then
@@ -158,6 +165,7 @@ if Aurora and Aurora.Config then
     Aurora.Config:SetDefault("fury.rotation.simc", true)     -- SimC模拟开关（大秘境手法）
     
     -- 大技能
+    -- forceBurst 由 Burst 按钮管理，通过 var="fury_force_burst" 自动保存
     Aurora.Config:SetDefault("fury.useRecklessness", true)
     Aurora.Config:SetDefault("fury.useAvatar", true)
     Aurora.Config:SetDefault("fury.useBladestorm", true)
@@ -218,6 +226,7 @@ local cfg = setmetatable({}, {
         if key == "rotationVersion" then return GetConfig("rotation.version", 1) end
         
         -- 大技能
+        -- forceBurst 通过 Burst 按钮读取，不使用cfg
         if key == "useRecklessness" then return GetConfig("useRecklessness", true) end
         if key == "useAvatar" then return GetConfig("useAvatar", true) end
         if key == "useBladestorm" then return GetConfig("useBladestorm", true) end
@@ -1654,8 +1663,66 @@ local function SimCRotationV2()
         end
     end
     
-    -- ⚡ 实时检测：进入技能循环前再次确认目标有效性
+    -- 实时检测：进入技能循环前再次确认目标有效性
     EnsureValidTarget()
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【强制爆发】立即使用所有大技能，无视规则
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 直接读取Toggle按钮状态，支持 /aurora toggle burst 宏命令
+    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    if burstEnabled then
+        local currentTime = GetTime()
+        
+        -- 如果定时器未初始化（使用宏命令时onClick可能不触发），则初始化定时器
+        if ForceBurstTimer == 0 then
+            ForceBurstTimer = currentTime + 3
+            print("|cffff0000[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已启用！3秒后自动关闭" or "Force Burst Activated! Auto-disables in 3s"))
+        end
+        
+        -- 检查定时器，3秒后自动关闭
+        if currentTime >= ForceBurstTimer then
+            -- 自动关闭强制爆发
+            if Aurora.Rotation.Burst then
+                Aurora.Rotation.Burst:SetValue(false)
+            end
+            ForceBurstTimer = 0
+            print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已自动关闭" or "Force Burst Auto-disabled"))
+        else
+            -- 强制使用所有大技能
+            if player.melee(target) then
+                -- 1. 剑刃风暴
+                if S.Bladestorm:ready() then
+                    if S.Bladestorm:execute() then return true end
+                end
+                
+                -- 2. 鲁莽
+                if S.Recklessness:ready() then
+                    if S.Recklessness:execute() then return true end
+                end
+                
+                -- 3. 天神下凡
+                if S.Avatar:ready() then
+                    if S.Avatar:execute() then return true end
+                end
+                
+                -- 4. 饰品1
+                if cfg.useTrinket1 then
+                    if UseTrinket1() then return false end
+                end
+                
+                -- 5. 饰品2
+                if cfg.useTrinket2 then
+                    if UseTrinket2() then return false end
+                end
+            end
+        end
+    else
+        -- 强制爆发已关闭，重置定时器
+        if ForceBurstTimer > 0 then
+            ForceBurstTimer = 0
+        end
+    end
     
     -- 饰品和药水（受爆发开关控制）
     if ShouldUseCooldowns() then
@@ -1716,10 +1783,11 @@ local function SimCRotationV2()
         if S.Avatar:execute() then return true end
     end
     
-    -- 2. Execute - AshenJuggernaut紧急处理
+    -- 2. Execute - AshenJuggernaut紧急处理（规则5：灰烬即将消失 + 猝死）
     -- ⚠️【5+目标跳过】时间窗口太短不适用多目标
+    -- ⚡【单体优化】必须配合猝死buff，避免浪费印记
     if enemies < 5 then
-        if player.aura(A.AshenJuggernaut) then
+        if player.aura(A.AshenJuggernaut) and suddenDeathUp then
             local ashenRem = player.auraremains(A.AshenJuggernaut)
             if ashenRem > 0 and ashenRem <= 1.5 then
                 if S.Execute:cast(target) then return true end
@@ -1727,8 +1795,9 @@ local function SimCRotationV2()
         end
     end
     
-    -- 3. Execute - SuddenDeath时间窗口
+    -- 3. Execute - SuddenDeath时间窗口（规则3：猝死即将消失）
     -- ⚠️【5+目标跳过】会浪费印记，改用优先级12精准控制
+    -- ⚡【单体优化】猝死即将消失时使用，避免浪费buff
     if enemies < 5 then
         if suddenDeathUp then
             local sdRem = player.auraremains(A.SuddenDeath)
@@ -1792,6 +1861,24 @@ local function SimCRotationV2()
         end
     end
     
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 6.5 Execute - 风暴前叠印记（规则4：确保殒命在即3层）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ⚠️【仅单体和2-4目标】5+目标不需要此逻辑
+    -- 目的：确保Bladestorm前有3层殒命在即，最大化伤害
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if enemies < 5 then
+        local markedStacks = target.auracount(A.MarkedForExecution) or 0
+        
+        -- 条件：风暴即将可用 + 印记<3层 + 有猝死
+        if S.Bladestorm:ready() and markedStacks < 3 and suddenDeathUp then
+            if cfg.debug then
+                log(string.format("⚔️ 【风暴前叠印记】印记%d层 → 斩杀", markedStacks))
+            end
+            if S.Execute:cast(target) then return true end
+        end
+    end
+    
     -- 7. Bladestorm
     if enrageUp then
         local canUseBladestorm = false
@@ -1835,27 +1922,44 @@ local function SimCRotationV2()
         end
     end
     
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 9.5 Rampage - 屠戮5层触发（规则6：主动维持激怒）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ⚠️【仅单体和2-4目标】5+目标不需要此逻辑
+    -- 目的：屠戮打击5层时主动使用暴怒，续激怒
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if enemies < 5 then
+        local slaughteringStacks = player.auracount(A.SlaughteringStrikes) or 0
+        if slaughteringStacks >= 5 then
+            if cfg.debug then
+                log("⚡ 【屠戮5层】→ 暴怒续激怒")
+            end
+            if S.Rampage:cast(target) then return true end
+        end
+    end
+    
     -- 10. Rampage - 激怒即将消失
     if enrageRem < 1.5 then
         if S.Rampage:cast(target) then return true end
     end
     
-    -- 11. Execute - SuddenDeath 2层
+    -- 11. Execute - SuddenDeath 2层（规则2：2层猝死 → 斩杀）
     -- ⚠️【5+目标跳过】被优先级12的条件B取代（2猝死+2印记）
+    -- ⚡【单体优化】2层猝死直接使用，激怒状态下
     local suddenDeathStacks = player.auracount(A.SuddenDeath) or 0
     if enemies < 5 then
-        if suddenDeathStacks == 2 and enrageUp then
+        if suddenDeathStacks >= 2 and enrageUp then
             if S.Execute:cast(target) then return true end
         end
     end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 12. Execute - MarkedForExecution（5+目标精准控制）
+    -- 12. Execute - MarkedForExecution（规则1：2层印记 + 猝死）
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     local markedStacks = target.auracount(A.MarkedForExecution) or 0
     
     if enemies >= 5 then
-        -- ⚡【5+目标优化】Execute精准控制
+        -- ⚡【5+目标优化】Execute精准控制（不修改）
         -- 核心：只在Bladestorm CD中 + 特定条件下使用
         local bladestormCD = S.Bladestorm:getcd()
         
@@ -1878,8 +1982,9 @@ local function SimCRotationV2()
             end
         end
     else
-        -- 4目标及以下：保持原逻辑（2层印记）
-        if markedStacks > 1 and enrageUp then
+        -- ⚡【单体和2-4目标优化】必须有猝死buff + 2层印记
+        -- 目的：避免浪费印记，精准控制Execute使用
+        if markedStacks >= 2 and suddenDeathUp and enrageUp then
             if S.Execute:cast(target) then return true end
         end
     end
@@ -1892,7 +1997,8 @@ local function SimCRotationV2()
         end
     end
     
-    -- 14. Crushing Blow - 第一次
+    -- 14. Raging Blow - 第一次（规则7：残暴终结触发）
+    -- ⚡【单体优化】2层充能或残暴终结都要打怒击
     local ragingCharges = S.RagingBlow:charges()
     local brutalFinish = player.aura(A.BrutalFinish)
     local champMight = target.aura(A.ChampionsMight)
@@ -1934,14 +2040,6 @@ local function SimCRotationV2()
         end
     end
     
-    -- 16. Raging Blow - BrutalFinish协同
-    local slaughteringStacks = player.auracount(A.SlaughteringStrikes) or 0
-    if brutalFinish and slaughteringStacks < 5 then
-        if not champMight or champMightRem > 1.5 then
-            if S.RagingBlow:cast(target) then return true end
-        end
-    end
-    
     -- 17. Rampage - 防溢出
     -- ⚠️【5+目标移除】允许怒气溢出，不需要防溢出
     if enemies < 5 then
@@ -1952,21 +2050,30 @@ local function SimCRotationV2()
     end
     -- 5+目标：移除此逻辑，允许怒气溢出到150
     
-    -- 18. Execute - 斩杀阶段单体
-    if executePhase and target.aura(A.MarkedForExecution) and enrageUp and enemies == 1 then
+    -- 18. Execute - 斩杀阶段（规则8：生命<20% 无视印记）
+    -- ⚡【单体优化】斩杀阶段无条件使用Execute，不需要印记
+    -- ⚠️【仅单体和2-4目标】5+目标不需要此逻辑
+    if enemies < 5 and executePhase then
         if S.Execute:cast(target) then return true end
     end
     
     -- ★★★ 19. Bloodthirst - 多目标填充（5+目标极严格限制）
-    -- ⚡【5+目标修改】所有情况都是填充技能，使用率极低
+    -- ⚡【5+目标优化】嗜血优先级低，只在万不得已时使用
     if S.Bloodthirst and enemies >= 5 then
-        -- 极严格条件：只在所有主要技能都不可用时使用
+        -- 极严格条件：只在所有主要技能都不可用且怒气极低时使用
         local ragingBlowCharges = S.RagingBlow:charges() or 0
         local canRampage = rage >= 80
         local suddenDeathStacks = player.auracount(A.SuddenDeath) or 0
         
-        -- 只在：无怒击充能、不能暴怒、无猝死时使用
-        if ragingBlowCharges == 0 and not canRampage and suddenDeathStacks == 0 then
+        -- 严格条件（和单体类似）：
+        -- 1. 无怒击充能
+        -- 2. 怒气不够暴怒
+        -- 3. 无猝死层数
+        -- 4. 怒气较低（<70）- 避免浪费怒气空间
+        if ragingBlowCharges == 0 and not canRampage and suddenDeathStacks == 0 and rage < 70 then
+            if cfg.debug then
+                log(string.format("🩸 【嗜血填充-AoE】%d目标 (痛击0层|怒气%d|猝死0层)", enemies, rage))
+            end
             if S.Bloodthirst:execute() then return true end
         end
     end
@@ -1985,11 +2092,6 @@ local function SimCRotationV2()
     
     -- 22. Raging Blow - Opportunist
     if player.aura(A.Opportunist) then
-        if S.RagingBlow:cast(target) then return true end
-    end
-    
-    -- 23. Raging Blow - 2层充能
-    if S.RagingBlow:charges() == 2 then
         if S.RagingBlow:cast(target) then return true end
     end
     
@@ -2015,14 +2117,6 @@ local function SimCRotationV2()
     if S.OdynsFury then
         if enrageUp or (hasTitanicRage) then
             if S.OdynsFury:cast(target) then return true end
-        end
-    end
-    
-    -- 29. Execute - SuddenDeath填充
-    -- ⚠️【5+目标跳过】太随意，改用优先级12精准控制
-    if enemies < 5 then
-        if suddenDeathUp then
-            if S.Execute:cast(target) then return true end
         end
     end
     
@@ -2545,6 +2639,7 @@ if Aurora.Macro then
     -- 爆发技能标签页
     gui:Tab(L.TabBurst)
         :Header({ text = Aurora.texture(1719, 16) .. " " .. L.BurstHeader })
+        
         -- 鲁莽
         :Checkbox({
             text = Aurora.texture(1719, 14) .. " " .. L.UseRecklessness,
@@ -2740,15 +2835,32 @@ if Aurora.Macro then
     -- print("|cff00ff00[TT狂战]|r GUI配置界面已加载")
     
     ------------------------------------------------------------------------
-    -- 状态框架 - 打断控制
+    -- 状态框架 - Toggle按钮
     ------------------------------------------------------------------------
-    -- Aurora原生的Interrupt按钮应该已经存在，我们直接使用
-    -- 如果 /aurora toggle interrupt 不工作，可能是因为：
-    -- 1. 按钮名称不是 "Interrupt"
-    -- 2. 或者需要检查 Aurora.Rotation.Interrupts（复数）
-    -- 3. 或者检查其他可能的名称
+    -- 注意：创建顺序决定显示顺序，先创建的显示在前面（紧跟原生按钮）
     
-    -- 添加风暴之锤切换按钮
+    -- 1. 强制爆发Toggle（位置：紧跟Cooldown按钮）
+    -- 注意：按钮名使用原生风格（无Toggle后缀），支持 /aurora toggle burst 命令
+    Aurora.Rotation.Burst = Aurora:AddGlobalToggle({
+        label = "强制爆发",
+        var = "fury_force_burst",  -- 配置保存标识符
+        icon = 1719,  -- 鲁莽技能ID
+        tooltip = (isZhCN and "立即使用所有爆发技能！\n\n包含:\n- 剑刃风暴\n- 鲁莽\n- 天神下凡\n- 饰品\n\n启用后3秒自动关闭\n\n宏命令: /aurora toggle burst" or "Force use all burst skills!\n\nIncludes:\n- Bladestorm\n- Recklessness\n- Avatar\n- Trinkets\n\nAuto-disables after 3s\n\nMacro: /aurora toggle burst"),
+        onClick = function(value)
+            -- onClick在点击按钮时触发
+            if value then
+                -- 启用强制爆发
+                ForceBurstTimer = GetTime() + 3  -- 3秒后自动关闭
+                print("|cffff0000[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已启用！3秒后自动关闭" or "Force Burst Activated! Auto-disables in 3s"))
+            else
+                -- 关闭强制爆发
+                ForceBurstTimer = 0
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已关闭" or "Force Burst Disabled"))
+            end
+        end
+    })
+    
+    -- 2. 风暴之锤切换按钮
     Aurora.Rotation.StormBoltToggle = Aurora:AddGlobalToggle({
         label = "风暴之锤",
         var = "fury_stormbolt_interrupt",
@@ -2761,7 +2873,7 @@ if Aurora.Macro then
         end
     })
     
-    -- 添加震荡波切换按钮
+    -- 3. 震荡波切换按钮
     Aurora.Rotation.ShockwaveToggle = Aurora:AddGlobalToggle({
         label = "震荡波",
         var = "fury_shockwave_interrupt",
@@ -2774,7 +2886,7 @@ if Aurora.Macro then
         end
     })
     
-    -- 添加战斗怒吼切换按钮
+    -- 4. 战斗怒吼切换按钮
     Aurora.Rotation.BattleShoutToggle = Aurora:AddGlobalToggle({
         label = "战斗怒吼",
         var = "fury_battleshout",
@@ -2787,8 +2899,8 @@ if Aurora.Macro then
         end
     })
     
-    -- 设置初始值（从配置读取）
-    -- InterruptToggle 是 Aurora 原生的，不需要设置初始值
+    -- 设置初始值
+    -- 注意：Burst的状态由框架自动管理，默认为false
     
     if Aurora.Rotation.StormBoltToggle then
         Aurora.Rotation.StormBoltToggle:SetValue(cfg.useStormBolt)
@@ -3257,7 +3369,7 @@ if Aurora.Macro then
             print("|cffffff00提示: 确保Aurora框架已正确加载|r")
             return
         end
-        print("|cff00ff00✓|r Aurora.ItemHandler 已加载")
+        print("|cff00ff00[OK]|r Aurora.ItemHandler 已加载")
         
         -- 检查配置
         print("")
@@ -3416,7 +3528,7 @@ if Aurora.Macro then
         
         -- 目标数量
         local enemies = player.enemiesaround(8) or 0
-        print("🎯 周围敌人: " .. enemies .. "个")
+        print("周围敌人: " .. enemies .. "个")
         
         -- 判断手法分支
         local rotationType = "单体"
@@ -3425,32 +3537,32 @@ if Aurora.Macro then
         elseif enemies >= 2 then
             rotationType = "小群体 (2-4目标)"
         end
-        print("📋 当前手法: |cff00ff00" .. rotationType .. "|r")
+        print("当前手法: |cff00ff00" .. rotationType .. "|r")
         
         -- 关键资源
         local rage = player.rage or 0
         local enrageUp = player.aura(A.Enrage)
         local enrageRem = enrageUp and (player.auraremains(A.Enrage) or 0) or 0
-        print("💥 怒气: " .. rage .. "/100")
-        print("😤 激怒: " .. (enrageUp and string.format("|cff00ff00是|r (%.1f秒)", enrageRem) or "|cffff0000否|r"))
+        print("怒气: " .. rage .. "/100")
+        print("激怒: " .. (enrageUp and string.format("|cff00ff00是|r (%.1f秒)", enrageRem) or "|cffff0000否|r"))
         
         -- 旋风斩层数
         local mcStacks = player.auracount(A.MeatCleaver) or 0
         local mcRem = mcStacks > 0 and (player.auraremains(A.MeatCleaver) or 0) or 0
         if enemies >= 2 then
-            print("🔄 血肉顺劈: " .. mcStacks .. "层" .. (mcStacks > 0 and string.format(" (%.1f秒)", mcRem) or ""))
+            print("血肉顺劈: " .. mcStacks .. "层" .. (mcStacks > 0 and string.format(" (%.1f秒)", mcRem) or ""))
         end
         
         -- 猝死状态
         local sdBuff = player.aura(A.SuddenDeath)
         local sdStacks = sdBuff and (player.auracount(A.SuddenDeath) or 0) or 0
         local sdRem = sdBuff and (player.auraremains(A.SuddenDeath) or 0) or 0
-        print("⚔️  猝死: " .. (sdBuff and string.format("|cff00ff00%d层|r (%.1f秒)", sdStacks, sdRem) or "|cffaaaaaa无|r"))
+        print("猝死: " .. (sdBuff and string.format("|cff00ff00%d层|r (%.1f秒)", sdStacks, sdRem) or "|cffaaaaaa无|r"))
         
         -- 目标印记
         if target and target.exists then
             local markStacks = target.auracount(A.ExecutionersWill) or 0
-            print("🎯 处刑印记: " .. markStacks .. "层 (目标: " .. (target.name or "未知") .. ")")
+            print("处刑印记: " .. markStacks .. "层 (目标: " .. (target.name or "未知") .. ")")
         end
         
         -- 剑刃风暴CD
@@ -3470,21 +3582,21 @@ if Aurora.Macro then
             
             -- 旋风斩层数建议
             if mcStacks < 3 then
-                print("• ⚠️  旋风斩层数偏低，剑刃风暴前补到4层")
+                print("- 旋风斩层数偏低，剑刃风暴前补到4层")
             elseif mcStacks >= 4 then
-                print("• ✓ 旋风斩层数充足，可以剑刃风暴")
+                print("- 旋风斩层数充足，可以剑刃风暴")
             end
             
             -- 怒击建议
             if enrageUp and rbCharges >= 2 then
-                print("• ✓ 激怒+2充能，可多打1-2个怒击")
+                print("- 激怒+2充能，可多打1-2个怒击")
             elseif not enrageUp and rage >= 125 then
-                print("• ⚠️  怒气高但无激怒，考虑打暴怒")
+                print("- 怒气高但无激怒，考虑打暴怒")
             end
             
             -- 猝死延后建议
             if sdBuff and bladestormReady and mcStacks >= 3 and rbCharges >= 1 then
-                print("• 💡 可延后猝死，优先打怒击")
+                print("- 可延后猝死，优先打怒击")
             end
             
             -- 收尾提示
@@ -3492,7 +3604,7 @@ if Aurora.Macro then
                 local targetHP = target.healthpercent or 100
                 local markStacks = target.auracount(A.ExecutionersWill) or 0
                 if targetHP <= 15 and markStacks >= 1 and bladestormCD > 3 then
-                    print("• 🎯 目标即将死亡，打裸斩杀消耗印记！")
+                    print("- 目标即将死亡，打裸斩杀消耗印记！")
                 end
             end
         end
@@ -3613,14 +3725,14 @@ Aurora.Rotation.AutoTargetToggle = Aurora:AddGlobalToggle({
         -- 显示状态提示
         if value then
             print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
-            print("|cff00ff00[自动目标]|r ✅ 已启用")
-            print("|cff00ffff• 目标死亡 → 自动切换|r")
-            print("|cff00ffff• 超出范围 → 切换最近目标|r")
-            print("|cff00ffff• 自动检测视线|r")
+            print("|cff00ff00[自动目标]|r 已启用")
+            print("|cff00ffff- 目标死亡 → 自动切换|r")
+            print("|cff00ffff- 超出范围 → 切换最近目标|r")
+            print("|cff00ffff- 自动检测视线|r")
             print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
         else
             print("|cffff0000━━━━━━━━━━━━━━━━━━━━━━━━|r")
-            print("|cffff0000[自动目标]|r ❌ 已禁用")
+            print("|cffff0000[自动目标]|r 已禁用")
             print("|cff808080需要手动切换目标|r")
             print("|cffff0000━━━━━━━━━━━━━━━━━━━━━━━━|r")
         end
@@ -3643,6 +3755,9 @@ end)
 -- 创建斜杠命令框架
 SLASH_FURYTARGET1 = "/fury"
 SLASH_FURYTARGET2 = "/狂怒"
+
+-- Aurora命令
+SLASH_AURORAFURY1 = "/aurora"
 
 -- 命令处理函数
 SlashCmdList["FURYTARGET"] = function(msg)
@@ -3682,17 +3797,17 @@ SlashCmdList["FURYTARGET"] = function(msg)
         print("|cff00ff00[TT狂战]|r 自动目标切换")
         print(" ")
         if newValue then
-            print("|cff00ff00✅ 已启用|r")
+            print("|cff00ff00已启用|r")
             print(" ")
             print("|cff00ffff功能:|r")
-            print("  • 目标死亡/不存在 → 自动选择新目标")
-            print("  • 目标超出近战范围 → 切换到最近的敌人")
-            print("  • 自动检测视线（LOS）")
+            print("  - 目标死亡/不存在 → 自动选择新目标")
+            print("  - 目标超出近战范围 → 切换到最近的敌人")
+            print("  - 自动检测视线（LOS）")
             print(" ")
             local range = Aurora.Config:Read("fury.autoTargetRange") or 8
             print("|cff808080当前范围:|r " .. range .. "码")
         else
-            print("|cffff0000❌ 已禁用|r")
+            print("|cffff0000已禁用|r")
             print(" ")
             print("|cff808080目标切换将需要手动操作|r")
         end
@@ -3714,14 +3829,14 @@ SlashCmdList["FURYTARGET"] = function(msg)
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
         print("|cff00ff00[TT狂战]|r 自动目标切换状态")
         print(" ")
-        print("|cff00ffff状态:|r " .. (enabled and "|cff00ff00已启用 ✅|r" or "|cffff0000已禁用 ❌|r"))
+        print("|cff00ffff状态:|r " .. (enabled and "|cff00ff00已启用|r" or "|cffff0000已禁用|r"))
         print("|cff00ffff范围:|r " .. range .. "码")
         print(" ")
         if enabled then
             print("|cff808080工作模式:|r")
-            print("  • 检测目标是否在近战范围内")
-            print("  • 自动切换到" .. range .. "码内最近的敌人")
-            print("  • 检测视线和距离")
+            print("  - 检测目标是否在近战范围内")
+            print("  - 自动切换到" .. range .. "码内最近的敌人")
+            print("  - 检测视线和距离")
         else
             print("|cff808080输入 |cff00ff00/fury target|r 快速启用")
         end
@@ -3735,7 +3850,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
             Aurora.Rotation.AutoTargetToggle:SetValue(true)
         end
         Aurora.Config:Write("fury.autoTarget", true)
-        print("|cff00ff00[TT狂战]|r 自动目标切换 |cff00ff00已启用 ✅|r")
+        print("|cff00ff00[TT狂战]|r 自动目标切换 |cff00ff00已启用|r")
         return
     end
     
@@ -3745,7 +3860,7 @@ SlashCmdList["FURYTARGET"] = function(msg)
             Aurora.Rotation.AutoTargetToggle:SetValue(false)
         end
         Aurora.Config:Write("fury.autoTarget", false)
-        print("|cff00ff00[TT狂战]|r 自动目标切换 |cffff0000已禁用 ❌|r")
+        print("|cff00ff00[TT狂战]|r 自动目标切换 |cffff0000已禁用|r")
         return
     end
     
@@ -3951,6 +4066,60 @@ SlashCmdList["FURYTARGET"] = function(msg)
     -- 未知命令
     print("|cffff0000[TT狂战]|r 未知命令: " .. msg)
     print("|cff00ffff输入 |cff00ff00/fury help|r 查看帮助")
+end
+
+-- /aurora 命令处理函数
+SlashCmdList["AURORAFURY"] = function(msg)
+    -- 处理空命令
+    if not msg or msg == "" then
+        msg = "help"
+    end
+    
+    local command = string.lower(strtrim(msg))
+    
+    -- /aurora burst - 强制爆发快捷命令（直接启用，不切换）
+    -- 推荐使用 /aurora toggle burst 作为宏命令
+    if command == "burst" or command == "爆发" then
+        if Aurora.Rotation.Burst then
+            -- 直接启用（不切换状态）
+            Aurora.Rotation.Burst:SetValue(true)
+            -- onClick回调会自动设置ForceBurstTimer
+            print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+            print("|cffff0000[TT狂战]|r 强制爆发已启用！")
+            print(" ")
+            print("|cff00ffff将强制使用:|r")
+            print("  - 剑刃风暴")
+            print("  - 鲁莽")
+            print("  - 天神下凡")
+            print("  - 饰品")
+            print(" ")
+            print("|cff808080将在3秒后自动关闭|r")
+            print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        else
+            print("|cffff0000[TT狂战]|r 强制爆发按钮未初始化")
+        end
+        return
+    end
+    
+    -- /aurora help - 帮助
+    if command == "help" or command == "帮助" or command == "?" then
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        print("|cff00ff00[TT狂战]|r Aurora命令帮助")
+        print(" ")
+        print("|cff00ffff命令列表:|r")
+        print("  |cff00ff00/aurora toggle burst|r - 切换强制爆发（宏推荐）")
+        print("  |cff00ff00/aurora burst|r - 快速启用强制爆发（3秒后自动关闭）")
+        print("  |cff00ff00/aurora help|r - 显示此帮助")
+        print(" ")
+        print("|cff00ffff状态栏按钮:|r")
+        print("  点击「强制爆发」按钮可手动切换")
+        print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
+        return
+    end
+    
+    -- 未知命令
+    print("|cffff0000[TT狂战]|r 未知命令: " .. msg)
+    print("|cff00ffff输入 |cff00ff00/aurora help|r 查看帮助")
 end
 
 ------------------------------------------------------------------------
