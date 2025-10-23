@@ -14,7 +14,7 @@ L.RoutineName = isZhCN and "TT狂战" or "TT Fury"
 -- 版本更新系统
 ------------------------------------------------------------------------
 -- 当前版本号（格式：YYYYMMDD）
-local CURRENT_VERSION = "20251022"
+local CURRENT_VERSION = "20251023"
 
 -- 更新内容（由一键脚本自动更新）
 -- UPDATE_CONTENT_START - 不要删除此标记
@@ -161,8 +161,8 @@ L.TalentCopyInst = isZhCN and "请按 Ctrl+C 复制天赋代码" or "Press Ctrl+
 L.TalentPasteInst = isZhCN and "然后在游戏中打开天赋面板，点击左下角「导入」按钮，粘贴代码即可导入" or "Then open talent panel, click 'Import' at bottom left, and paste"
 
 -- Toast
-L.ToastWelcome = isZhCN and "欢迎, %s! 输入 /fury help 查看命令" or "Welcome, %s! Type /fury help for commands"
-L.ToastUpdate = isZhCN and "优化：性能提升 | 添加焕生治疗药水" or "Optimized: Performance boost | Added Algari Rejuvenation Potion"
+L.ToastWelcome = isZhCN and "欢迎, %s! 输入 /aurora help 查看命令" or "Welcome, %s! Type /aurora help for commands"
+L.ToastUpdate = isZhCN and "新增：一键创建宏命令 | 爆发管理优化" or "New: One-click Macro Creation | Burst Management Optimized"
 
 local player = Aurora.UnitManager:Get("player")
 
@@ -4392,6 +4392,22 @@ SlashCmdList["AURORAFURY"] = function(msg)
         return
     end
     
+    -- /aurora update - 查看更新内容
+    if command == "update" or command == "更新" or command == "changelog" then
+        print(UPDATE_CONTENT)
+        return
+    end
+    
+    -- /aurora reset - 重置版本号（用于测试更新通知）
+    if command == "reset" or command == "重置" then
+        if Aurora and Aurora.Config then
+            Aurora.Config:Write("fury.lastSeenVersion", "0")
+            print("|cff00ff00[TT狂战]|r 版本记录已清除")
+            print("|cff00ffff/reload 后将重新显示更新通知|r")
+        end
+        return
+    end
+    
     -- /aurora help - 帮助
     if command == "help" or command == "帮助" or command == "?" then
         print("|cff00ff00━━━━━━━━━━━━━━━━━━━━━━━━|r")
@@ -4400,6 +4416,8 @@ SlashCmdList["AURORAFURY"] = function(msg)
         print("|cff00ffff命令列表:|r")
         print("  |cff00ff00/aurora toggle burst|r - 切换强制爆发（宏推荐）")
         print("  |cff00ff00/aurora burst|r - 快速启用强制爆发（3秒后自动关闭）")
+        print("  |cff00ff00/aurora update|r - 查看更新内容")
+        print("  |cff00ff00/aurora reset|r - 重置版本记录（测试用）")
         print("  |cff00ff00/aurora help|r - 显示此帮助")
         print(" ")
         print("|cff00ffff状态栏按钮:|r")
@@ -4420,28 +4438,32 @@ end
 -- 延迟显示 Toast 通知，确保所有内容都加载完成
 C_Timer.After(2.5, function()
     if Aurora and Aurora.Toast and Aurora.Config then
-        local currentVersion = MythicWarrior.Version or "2.1.0"
-        local lastSeenVersion = Aurora.Config:Read("fury.lastSeenVersion") or "0.0.0"
+        local lastSeenVersion = Aurora.Config:Read("fury.lastSeenVersion") or "0"
         local playerName = UnitName("player") or "战士"
         
-        -- 检查是否为新版本
-        if currentVersion ~= lastSeenVersion then
+        -- 检查是否为新版本（使用 CURRENT_VERSION）
+        if CURRENT_VERSION ~= lastSeenVersion then
             -- 保存当前版本
-            Aurora.Config:Write("fury.lastSeenVersion", currentVersion)
+            Aurora.Config:Write("fury.lastSeenVersion", CURRENT_VERSION)
             
             -- 判断是首次使用还是更新
-            if lastSeenVersion == "0.0.0" then
+            if lastSeenVersion == "0" then
                 -- 首次使用
                 Aurora.Toast:Show(
-                    string.format("%s v%s", L.RoutineName, currentVersion),
+                    string.format("%s v%s", L.RoutineName, CURRENT_VERSION),
                     string.format(L.ToastWelcome, playerName)
                 )
             else
-                -- 版本更新
+                -- 版本更新 - 显示 Toast 提示
                 Aurora.Toast:Show(
-                    string.format((isZhCN and "%s已更新至 v%s" or "%s Updated to v%s"), L.RoutineName, currentVersion),
-                    L.ToastUpdate
+                    string.format((isZhCN and "%s已更新至 v%s" or "%s Updated to v%s"), L.RoutineName, CURRENT_VERSION),
+                    L.ToastUpdate .. (isZhCN and " | 输入 /aurora update 查看详情" or " | Type /aurora update for details")
                 )
+                
+                -- 同时在聊天窗口显示完整更新内容
+                C_Timer.After(1, function()
+                    print(UPDATE_CONTENT)
+                end)
             end
         end
     end
