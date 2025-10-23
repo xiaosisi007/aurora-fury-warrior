@@ -326,6 +326,11 @@ local cfg = setmetatable({}, {
         if key == "aoeThreshold4" then return GetConfig("aoeThreshold4", 4) end
         if key == "aoeThreshold5" then return GetConfig("aoeThreshold5", 5) end
         
+        -- 爆发模式控制
+        if key == "burstOnBoss" then return GetConfig("cooldowns.burstOnBoss", true) end
+        if key == "burstOnMobCount" then return GetConfig("cooldowns.burstOnMobCount", true) end
+        if key == "burstMobCount" then return GetConfig("cooldowns.burstMobCount", 3) end
+        
         -- 手动爆发开关
         if key == "manualCooldownsEnabled" then return true end
         
@@ -1089,7 +1094,7 @@ end)
 -- 🎯 智能大技能判断函数
 -- 判断是否应该使用大技能（考虑群体数量、单位类型、TTD）
 local function ShouldUseMajorCooldown(ttdThreshold)
-    -- 训练假人：无限制使用
+    -- ✅ 训练假人：无限制使用爆发技能
     if IsTrainingDummy(target) then
         return true
     end
@@ -1117,24 +1122,14 @@ local function ShouldUseMajorCooldown(ttdThreshold)
         return false
     end
     
-    -- 检查是否是BOSS
+    -- ✅ 检查是否是BOSS（使用游戏内置API，精准识别）
     if burstOnBoss and isBoss then
         return true
     end
     
-    -- 检查怪物数量
-    if burstOnMobCount then
-        -- 检查怪物数量是否达到阈值
-        if enemies >= burstMobCount then
-            return true
-        end
-        
-        -- 精英怪也可以爆发（通过血量判断）
-        local maxHealth = target.healthmax or 0
-        local playerMaxHealth = player.healthmax or 1
-        if maxHealth > (playerMaxHealth * 3) then
-            return true
-        end
+    -- ✅ 检查怪物数量是否达到阈值
+    if burstOnMobCount and enemies >= burstMobCount then
+        return true
     end
     
     return false
@@ -1482,9 +1477,8 @@ end)
 
 -- 鲁莽 (受 Aurora 爆发开关控制)
 S.Recklessness:callback(function(spell)
-    -- ⚠️ 强制爆发：绕过所有检查
-    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
-    if burstEnabled then
+    -- ⚠️ 强制爆发：只在 ForceBurstTimer > 0 时绕过所有检查
+    if ForceBurstTimer > 0 then
         return spell:cast(player)
     end
     
@@ -1499,7 +1493,7 @@ S.Recklessness:callback(function(spell)
     if not target.alive then return false end
     if not target.enemy then return false end
     
-    -- 🎯 智能大技能判断
+    -- 🎯 智能大技能判断（包含怪物数量限制）
     local ttdThreshold = cfg.recklessnessTTD or 10
     if not ShouldUseMajorCooldown(ttdThreshold) then
         return false
@@ -1510,9 +1504,8 @@ end)
 
 -- 天神下凡 (受 Aurora 爆发开关控制)
 S.Avatar:callback(function(spell)
-    -- ⚠️ 强制爆发：绕过所有检查
-    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
-    if burstEnabled then
+    -- ⚠️ 强制爆发：只在 ForceBurstTimer > 0 时绕过所有检查
+    if ForceBurstTimer > 0 then
         return spell:cast(player)
     end
     
@@ -1527,7 +1520,7 @@ S.Avatar:callback(function(spell)
     if not target.alive then return false end
     if not target.enemy then return false end
     
-    -- 🎯 智能大技能判断
+    -- 🎯 智能大技能判断（包含怪物数量限制）
     local ttdThreshold = cfg.avatarTTD or 10
     if not ShouldUseMajorCooldown(ttdThreshold) then
         return false
@@ -1538,9 +1531,8 @@ end)
 
 -- 剑刃风暴 (受 Aurora 爆发开关控制)
 S.Bladestorm:callback(function(spell)
-    -- ⚠️ 强制爆发：绕过所有检查
-    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
-    if burstEnabled then
+    -- ⚠️ 强制爆发：只在 ForceBurstTimer > 0 时绕过所有检查
+    if ForceBurstTimer > 0 then
         return spell:cast(player)
     end
     
@@ -1555,7 +1547,7 @@ S.Bladestorm:callback(function(spell)
     if not target.alive then return false end
     if not target.enemy then return false end
     
-    -- 🎯 智能大技能判断
+    -- 🎯 智能大技能判断（包含怪物数量限制）
     local ttdThreshold = cfg.bladestormTTD or 8
     if not ShouldUseMajorCooldown(ttdThreshold) then
         return false
@@ -1566,9 +1558,8 @@ end)
 
 -- 雷鸣之吼 (只要激怒状态就可以使用，不受大技能开关影响)
 S.ThunderousRoar:callback(function(spell)
-    -- ⚠️ 强制爆发：绕过所有检查
-    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
-    if burstEnabled then
+    -- ⚠️ 强制爆发：只在 ForceBurstTimer > 0 时绕过所有检查
+    if ForceBurstTimer > 0 then
         return spell:cast(player)
     end
     
@@ -1668,13 +1659,13 @@ local function SimCRotationV2()
     if player.dead then return false end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【强制爆发】绝对最高优先级，使用原生API无视一切规则
+    -- 【强制爆发】定时器管理（3秒后自动关闭）
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    local currentTime = GetTime()
     local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    
     if burstEnabled then
-        local currentTime = GetTime()
-        
-        -- 如果定时器未初始化，则初始化定时器
+        -- 如果定时器未初始化，则初始化定时器（只在按钮刚开启时）
         if ForceBurstTimer == 0 then
             ForceBurstTimer = currentTime + 3
             print("|cffff0000[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已启用！3秒后自动关闭" or "Force Burst Activated! Auto-disables in 3s"))
@@ -1689,7 +1680,7 @@ local function SimCRotationV2()
             ForceBurstTimer = 0
             print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已自动关闭" or "Force Burst Auto-disabled"))
         else
-            -- ⚠️ 强制爆发：调用 Aurora 方法，callback 会绕过检查
+            -- ⚠️ 强制爆发期间：调用 Aurora 方法，callback 会检查 ForceBurstTimer
             
             -- 1. 剑刃风暴
             S.Bladestorm:cast(player)
