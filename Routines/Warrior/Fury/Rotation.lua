@@ -23,17 +23,22 @@ local UPDATE_CONTENT = [[
          TT狂战 更新通告
 ========================================
 
-版本：2025.10.22
+版本：2025.10.23
 
 【新功能】
-* 强制爆发按钮 - 支持 /aurora toggle burst 宏命令
-
+* 新增一键创建宏命令功能
+* 爆发管理加入怪物数量滑块
 
 【优化】
-* 单体循环优化 - 嗜血只在没有技能的时候填充
+* 优化强制爆发按钮只要开启无视一切直接使用
+* 优化爆发模式控制
 
-【说明】
-强制爆发，不管是按钮还是宏命令启动，3秒后都会自动关闭
+【爆发模式说明】
+首领选项: 勾选时对BOSS使用爆发（推荐开启）
+怪物数量选项: 勾选时达到怪物数量阈值才爆发（推荐开启，默认≥3）
+
+
+
 
 ========================================
 ]]
@@ -44,6 +49,7 @@ L.TabAuxiliary = isZhCN and "辅助技能" or "Auxiliary Skills"
 L.TabInterrupt = isZhCN and "打断" or "Interrupt"
 L.TabPotions = isZhCN and "药水饰品" or "Potions & Trinkets"
 L.TabTalents = isZhCN and "天赋导入" or "Talent Import"
+L.TabMacros = isZhCN and "宏命令" or "Macros"
 
 L.IntroTarget = isZhCN and "关于目标" or "About Target"
 L.IntroTargetText = "Modules→Auto Target→Auto Target→Highest→OnlyDead"
@@ -54,11 +60,20 @@ L.IntroQueueText = isZhCN and "我们使用Aurora原生SmartQueue" or "We use Au
 
 -- Headers
 L.BurstHeader = isZhCN and "爆发技能管理" or "Burst Skills Management"
+L.BurstModeHeader = isZhCN and "爆发模式控制" or "Burst Mode Control"
 L.DefensiveSkills = isZhCN and "防护技能" or "Defensive Skills"
 L.InterruptHeader = isZhCN and "智能打断系统" or "Smart Interrupt System"
 L.TalentsHeader = isZhCN and "天赋配置导入" or "Talent Configuration Import"
 L.TrinketHeader = isZhCN and "主动饰品" or "Active Trinkets"
 L.PotionsConsumables = isZhCN and "药水和消耗品" or "Potions & Consumables"
+
+-- Burst Mode
+L.BurstOnBoss = isZhCN and "首领" or "Boss"
+L.BurstOnBossTooltip = isZhCN and "对BOSS使用爆发技能" or "Use burst on bosses"
+L.BurstOnMobCount = isZhCN and "怪物数量" or "Mob Count"
+L.BurstOnMobCountTooltip = isZhCN and "周围敌人达到阈值时使用爆发" or "Use burst when enemies ≥ threshold"
+L.BurstMobCountThreshold = isZhCN and "怪物数量阈值" or "Mob Count Threshold"
+L.BurstMobCountThresholdTooltip = isZhCN and "周围敌人数量 ≥ 此值时才使用爆发技能" or "Use burst only when enemies around ≥ this value"
 
 -- Trinkets
 L.EnableTrinket1 = isZhCN and "启用饰品1" or "Enable Trinket 1"
@@ -98,9 +113,12 @@ L.WhirlwindRange = isZhCN and "掠武风暴范围" or "Bladestorm Range"
 L.ShowWhirlwindRange = isZhCN and "显示掠武风暴范围圈" or "Show Bladestorm range circle"
 L.RangeOpacity = isZhCN and "圆圈透明度" or "Circle Opacity"
 L.UseRallyCry = isZhCN and "使用集结呐喊" or "Use Rally Cry"
+
 L.RallyCryTooltip = isZhCN and "当指定人数血量低于阈值时自动释放" or "Auto-use when set number of players below threshold"
 L.RallyCryPlayers = isZhCN and "队友数量" or "Party Members"
 L.RallyCryPlayersTooltip = isZhCN and "当多少人血量低于阈值时释放" or "Number of low HP players to trigger"
+L.AutoFacing = isZhCN and "自动面向目标" or "Auto Face Target"
+L.AutoFacingTooltip = isZhCN and "自动转身面向目标\n\n只在静止时执行，移动时不会转动视角" or "Auto-face target\n\nOnly when standing still, won't rotate camera while moving"
 
 -- Interrupt
 L.UseAuroraList = isZhCN and "使用 Aurora 列表" or "Use Aurora List"
@@ -114,6 +132,11 @@ L.StormBoltTooltip = isZhCN and "远程打断，30秒CD，40码范围\n读条怪
 L.UseShockwave = isZhCN and "使用震荡波" or "Use Shockwave"
 L.ShockwaveTooltip = isZhCN and "AOE打断，40秒CD，10码范围\n读条怪物数量 ≥ 设定值时使用" or "AOE interrupt, 40s CD, 10yd range\nUse when casting enemies ≥ threshold"
 L.CastingEnemies = isZhCN and "读条怪物数量" or "Casting Enemies"
+
+-- Macros
+L.MacrosHeader = isZhCN and "一键创建宏命令" or "Create Macros"
+L.CreateMacrosButton = isZhCN and "创建宏命令" or "Create Macros"
+L.CreateMacrosTooltip = isZhCN and "点击后自动创建4个宏到角色专用宏\n\n将创建:\n- 循环开关\n- 爆发开关\n- 打断开关\n- 强制爆发" or "Click to create 4 macros (character-specific)\n\nWill create:\n- Toggle Routine\n- Toggle Cooldown\n- Toggle Interrupt\n- Force Burst"
 
 -- Burst Skills
 L.ForceBurst = isZhCN and "强制爆发" or "Force Burst"
@@ -207,6 +230,7 @@ if Aurora and Aurora.Config then
     Aurora.Config:SetDefault("fury.victoryRushThreshold", 40)
     Aurora.Config:SetDefault("fury.useSpellReflection", true)
     Aurora.Config:SetDefault("fury.spellReflectionCastPercent", 60)  -- 施法进度阈值
+    Aurora.Config:SetDefault("fury.autoFacing", false)  -- 自动面向目标（功能已实现，暂时隐藏UI）
     
     -- 自动目标切换
     Aurora.Config:SetDefault("fury.autoTarget", true)  -- 自动目标切换开关
@@ -268,6 +292,7 @@ local cfg = setmetatable({}, {
         if key == "victoryRushThreshold" then return GetConfig("victoryRushThreshold", 40) end
         if key == "useSpellReflection" then return GetConfig("useSpellReflection", true) end
         if key == "spellReflectionCastPercent" then return GetConfig("spellReflectionCastPercent", 60) end
+        if key == "autoFacing" then return GetConfig("autoFacing", false) end  -- 自动面向（默认关闭）
         
         -- 自动目标切换
         if key == "autoTarget" then return GetConfig("autoTarget", true) end
@@ -1080,34 +1105,38 @@ local function ShouldUseMajorCooldown(ttdThreshold)
         return false
     end
     
-    -- 🎯 检查周围敌人数量
+    -- 🎯 获取爆发模式配置
+    local burstOnBoss = cfg.burstOnBoss
+    local burstOnMobCount = cfg.burstOnMobCount
+    local burstMobCount = cfg.burstMobCount or 3
     local enemies = player.enemiesaround(8) or 0
-    
-    -- 群体场景（3个或以上怪物）：值得开大招
-    if enemies >= 3 then
-        return true
-    end
-    
-    -- 单体或少量怪物（1-2个）：只对BOSS/精英使用
-    -- 检查目标是否是 BOSS 或精英怪
     local isBoss = target.isboss or false
     
-    -- 如果是BOSS，直接返回true
-    if isBoss then
+    -- 如果两个选项都关闭，默认不爆发
+    if not burstOnBoss and not burstOnMobCount then
+        return false
+    end
+    
+    -- 检查是否是BOSS
+    if burstOnBoss and isBoss then
         return true
     end
     
-    -- 对于非BOSS的目标，检查是否是精英或稀有怪
-    -- 通过血量判断：普通小怪血量通常较低，精英怪血量较高
-    local maxHealth = target.healthmax or 0
-    local playerMaxHealth = player.healthmax or 1
-    
-    -- 如果目标最大血量 > 玩家最大血量的3倍，认为是精英/稀有怪
-    if maxHealth > (playerMaxHealth * 3) then
-        return true
+    -- 检查怪物数量
+    if burstOnMobCount then
+        -- 检查怪物数量是否达到阈值
+        if enemies >= burstMobCount then
+            return true
+        end
+        
+        -- 精英怪也可以爆发（通过血量判断）
+        local maxHealth = target.healthmax or 0
+        local playerMaxHealth = player.healthmax or 1
+        if maxHealth > (playerMaxHealth * 3) then
+            return true
+        end
     end
     
-    -- 其他情况（普通小怪）：不使用大技能
     return false
 end
 
@@ -1453,6 +1482,12 @@ end)
 
 -- 鲁莽 (受 Aurora 爆发开关控制)
 S.Recklessness:callback(function(spell)
+    -- ⚠️ 强制爆发：绕过所有检查
+    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    if burstEnabled then
+        return spell:cast(player)
+    end
+    
     if not ShouldUseCooldowns() then return false end
     if not cfg.useRecklessness then return false end -- 单独开关
     
@@ -1475,6 +1510,12 @@ end)
 
 -- 天神下凡 (受 Aurora 爆发开关控制)
 S.Avatar:callback(function(spell)
+    -- ⚠️ 强制爆发：绕过所有检查
+    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    if burstEnabled then
+        return spell:cast(player)
+    end
+    
     if not ShouldUseCooldowns() then return false end
     if not cfg.useAvatar then return false end -- 单独开关
     
@@ -1497,6 +1538,12 @@ end)
 
 -- 剑刃风暴 (受 Aurora 爆发开关控制)
 S.Bladestorm:callback(function(spell)
+    -- ⚠️ 强制爆发：绕过所有检查
+    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    if burstEnabled then
+        return spell:cast(player)
+    end
+    
     if not ShouldUseCooldowns() then return false end
     if not cfg.useBladestorm then return false end -- 单独开关
     
@@ -1519,6 +1566,12 @@ end)
 
 -- 雷鸣之吼 (只要激怒状态就可以使用，不受大技能开关影响)
 S.ThunderousRoar:callback(function(spell)
+    -- ⚠️ 强制爆发：绕过所有检查
+    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    if burstEnabled then
+        return spell:cast(player)
+    end
+    
     -- 必须在激怒状态下使用
     if not player.aura(A.Enrage) then
         return false
@@ -1615,6 +1668,66 @@ local function SimCRotationV2()
     if player.dead then return false end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【强制爆发】绝对最高优先级，使用原生API无视一切规则
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
+    if burstEnabled then
+        local currentTime = GetTime()
+        
+        -- 如果定时器未初始化，则初始化定时器
+        if ForceBurstTimer == 0 then
+            ForceBurstTimer = currentTime + 3
+            print("|cffff0000[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已启用！3秒后自动关闭" or "Force Burst Activated! Auto-disables in 3s"))
+        end
+        
+        -- 检查定时器，3秒后自动关闭
+        if currentTime >= ForceBurstTimer then
+            -- 自动关闭强制爆发
+            if Aurora.Rotation.Burst then
+                Aurora.Rotation.Burst:SetValue(false)
+            end
+            ForceBurstTimer = 0
+            print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已自动关闭" or "Force Burst Auto-disabled"))
+        else
+            -- ⚠️ 强制爆发：调用 Aurora 方法，callback 会绕过检查
+            
+            -- 1. 剑刃风暴
+            S.Bladestorm:cast(player)
+            
+            -- 2. 鲁莽
+            S.Recklessness:cast(player)
+            
+            -- 3. 天神下凡
+            S.Avatar:cast(player)
+            
+            -- 4. 雷霆咆哮
+            S.ThunderousRoar:cast(player)
+            
+            -- 5. 饰品1
+            if cfg.useTrinket1 then
+                UseTrinket1()
+            end
+            
+            -- 6. 饰品2
+            if cfg.useTrinket2 then
+                UseTrinket2()
+            end
+            
+            -- 7. 爆发药水
+            if cfg.useCombatPotion then
+                UseCombatPotion()
+            end
+            
+            -- 不 return，让所有技能都尝试施放
+        end
+    else
+        -- 强制爆发已关闭，重置定时器
+        if ForceBurstTimer > 0 then
+            ForceBurstTimer = 0
+        end
+    end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【生存技能】优先级最高，即使没有目标也要能用
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if UseHealthstone() then return true end
@@ -1630,6 +1743,19 @@ local function SimCRotationV2()
     -- 检查目标有效性
     if not target or not target.exists or not target.alive or not target.enemy then
         return false
+    end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【自动面向】使用 Tinkr API 自动转身面向目标
+    -- ⚠️ 只在静止时执行，避免移动时视角抖动
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if cfg.autoFacing and FaceObject then
+        -- 只在角色静止时自动面向，移动时不执行
+        -- 使用 GetUnitSpeed 检查玩家是否正在移动（Tinkr 文档: moving() 使用 GetUnitSpeed > 0 实现）
+        local isMoving = GetUnitSpeed and GetUnitSpeed('player') > 0
+        if not isMoving then
+            FaceObject('target')
+        end
     end
     
     -- 获取战斗数据
@@ -1653,17 +1779,6 @@ local function SimCRotationV2()
     local hasBloodborne = S.Bloodborne and S.Bloodborne:isknown() or false
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【起手优化】斩鲜血肉天赋 - 优先使用嗜血触发激怒
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    local playerCombatTime = player.timecombat or 0
-    
-    -- 战斗开始的前5秒，如果没有激怒BUFF，优先用嗜血触发激怒
-    -- ✅ 优化：删除冗余ready()检查
-    if playerCombatTime < 5 and not enrageUp and S.Bloodthirst then
-        if S.Bloodthirst:execute() then return true end
-    end
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【最高优先级】打断系统
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- execute() 会触发在 Rotation.lua 中定义的 callback
@@ -1674,6 +1789,14 @@ local function SimCRotationV2()
     
     -- 防御技能
     if S.SpellReflection:execute() then return true end
+    
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 【剑刃风暴增伤】剑刃风暴期间自动使用风暴之锤
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 不受风暴之锤开关控制，直接嵌入循环
+    if player.aura(A.Bladestorm) and S.StormBolt and S.StormBolt:ready() then
+        if S.StormBolt:cast(target) then return true end
+    end
     
     -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     -- 【生存技能 - 需要目标】胜利在望
@@ -1694,64 +1817,6 @@ local function SimCRotationV2()
     
     -- 实时检测：进入技能循环前再次确认目标有效性
     EnsureValidTarget()
-    
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 【强制爆发】立即使用所有大技能，无视规则
-    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    -- 直接读取Toggle按钮状态，支持 /aurora toggle burst 宏命令
-    local burstEnabled = Aurora.Rotation.Burst and Aurora.Rotation.Burst:GetValue() or false
-    if burstEnabled then
-        local currentTime = GetTime()
-        
-        -- 如果定时器未初始化（使用宏命令时onClick可能不触发），则初始化定时器
-        if ForceBurstTimer == 0 then
-            ForceBurstTimer = currentTime + 3
-            print("|cffff0000[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已启用！3秒后自动关闭" or "Force Burst Activated! Auto-disables in 3s"))
-        end
-        
-        -- 检查定时器，3秒后自动关闭
-        if currentTime >= ForceBurstTimer then
-            -- 自动关闭强制爆发
-            if Aurora.Rotation.Burst then
-                Aurora.Rotation.Burst:SetValue(false)
-            end
-            ForceBurstTimer = 0
-            print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "强制爆发已自动关闭" or "Force Burst Auto-disabled"))
-        else
-            -- 强制使用所有大技能
-            if player.melee(target) then
-                -- 1. 剑刃风暴
-                if S.Bladestorm:ready() then
-                    if S.Bladestorm:execute() then return true end
-                end
-                
-                -- 2. 鲁莽
-                if S.Recklessness:ready() then
-                    if S.Recklessness:execute() then return true end
-                end
-                
-                -- 3. 天神下凡
-                if S.Avatar:ready() then
-                    if S.Avatar:execute() then return true end
-                end
-                
-                -- 4. 饰品1
-                if cfg.useTrinket1 then
-                    if UseTrinket1() then return false end
-                end
-                
-                -- 5. 饰品2
-                if cfg.useTrinket2 then
-                    if UseTrinket2() then return false end
-                end
-            end
-        end
-    else
-        -- 强制爆发已关闭，重置定时器
-        if ForceBurstTimer > 0 then
-            ForceBurstTimer = 0
-        end
-    end
     
     -- 饰品和药水（受爆发开关控制）
     if ShouldUseCooldowns() then
@@ -2079,14 +2144,31 @@ local function SimCRotationV2()
     end
     -- 5+目标：移除此逻辑，允许怒气溢出到150
     
-    -- 18. Execute - 斩杀阶段（规则8：生命<20% 无视印记）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- 18. Raging Blow - 2层充能优先消耗（规则9：新增）
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    -- ⚡【单体优化】当怒击2层时，优先打掉，避免浪费充能
+    -- ⚠️【仅单体和2-4目标】确保充能不浪费
+    -- ⚠️【优先级】放在20%斩杀之前，确保充能管理优先
+    -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if enemies < 5 then
+        local ragingCharges = S.RagingBlow:charges()
+        if ragingCharges == 2 then
+            if cfg.debug then
+                log("💢 【规则9】怒击2层 → 优先消耗")
+            end
+            if S.RagingBlow:cast(target) then return true end
+        end
+    end
+    
+    -- 19. Execute - 斩杀阶段（规则8：生命<20% 无视印记）
     -- ⚡【单体优化】斩杀阶段无条件使用Execute，不需要印记
     -- ⚠️【仅单体和2-4目标】5+目标不需要此逻辑
     if enemies < 5 and executePhase then
         if S.Execute:cast(target) then return true end
     end
     
-    -- ★★★ 19. Bloodthirst - 多目标填充（5+目标极严格限制）
+    -- ★★★ 20. Bloodthirst - 多目标填充（5+目标极严格限制）
     -- ⚡【5+目标优化】嗜血优先级低，只在万不得已时使用
     if S.Bloodthirst and enemies >= 5 then
         -- 极严格条件：只在所有主要技能都不可用且怒气极低时使用
@@ -2110,16 +2192,16 @@ local function SimCRotationV2()
     -- ⚡ 实时检测：常规循环中段，再次确认目标有效性
     EnsureValidTarget()
     
-    -- 20. Crushing Blow - 第二次
+    -- 21. Crushing Blow - 第二次
     if S.RagingBlow:cast(target) then return true end
     
-    -- 21. Bloodbath - 第二次
+    -- 22. Bloodbath - 第二次
     -- ✅ 优化：删除冗余ready()检查
     if S.Bloodbath then
         if S.Bloodbath:cast(target) then return true end
     end
     
-    -- 22. Raging Blow - Opportunist
+    -- 23. Raging Blow - Opportunist
     if player.aura(A.Opportunist) then
         if S.RagingBlow:cast(target) then return true end
     end
@@ -2127,7 +2209,7 @@ local function SimCRotationV2()
     -- ⚡ 实时检测：填充技能前，最后一次确认目标有效性
     EnsureValidTarget()
     
-    -- 25. Onslaught - Tenderize
+    -- 24. Onslaught - Tenderize
     -- ✅ 优化：删除冗余ready()检查
     if S.Onslaught then
         if hasTenderize then
@@ -2135,13 +2217,13 @@ local function SimCRotationV2()
         end
     end
     
-    -- 26. Raging Blow - 第三次
+    -- 25. Raging Blow - 第三次
     if S.RagingBlow:cast(target) then return true end
     
-    -- 27. Rampage
+    -- 26. Rampage
     if S.Rampage:cast(target) then return true end
     
-    -- 28. Odyns Fury - 激怒或泰坦
+    -- 27. Odyns Fury - 激怒或泰坦
     -- ✅ 优化：删除冗余ready()检查
     if S.OdynsFury then
         if enrageUp or (hasTitanicRage) then
@@ -2149,7 +2231,7 @@ local function SimCRotationV2()
         end
     end
     
-    -- ★★★ 30. Bloodthirst - 填充（4目标以下）
+    -- ★★★ 28. Bloodthirst - 填充（4目标以下）
     -- ✅ 严格条件：只在其他技能都不可用时使用
     -- ⚡【修改】从"<=5"改为"<5"（5目标不使用此逻辑）
     if S.Bloodthirst and enemies < 5 then
@@ -2572,6 +2654,19 @@ if Aurora.Macro then
                 end
             end
         })
+        
+        -- 【自动面向】功能已实现，暂时隐藏UI
+        -- :Header({ text = Aurora.texture(6572, 16) })
+        -- :Checkbox({
+        --     text = L.AutoFacing,
+        --     key = "fury.autoFacing",
+        --     default = true,
+        --     tooltip = L.AutoFacingTooltip,
+        --     onChange = function(self, checked)
+        --         cfg.autoFacing = checked
+        --         print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.AutoFacing .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+        --     end
+        -- })
     
     -- 打断标签页
     gui:Tab(L.TabInterrupt)
@@ -2667,7 +2762,43 @@ if Aurora.Macro then
     gui:Tab(L.TabBurst)
         :Header({ text = Aurora.texture(1719, 16) .. " " .. L.BurstHeader })
         
+        -- 爆发模式控制
+        :Checkbox({
+            text = Aurora.texture(136017, 14) .. " " .. L.BurstOnMobCount,
+            key = "fury.cooldowns.burstOnMobCount",
+            default = true,
+            tooltip = L.BurstOnMobCountTooltip,
+            onChange = function(self, checked)
+                cfg.burstOnMobCount = checked
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.BurstOnMobCount .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+            end
+        })
+        :Slider({
+            text = L.BurstMobCountThreshold,
+            key = "fury.cooldowns.burstMobCount",
+            default = 3,
+            min = 2,
+            max = 10,
+            step = 1,
+            tooltip = L.BurstMobCountThresholdTooltip,
+            onChange = function(self, value)
+                cfg.burstMobCount = value
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.BurstMobCountThreshold .. ": " .. value)
+            end
+        })
+        :Checkbox({
+            text = Aurora.texture(132091, 14) .. " " .. L.BurstOnBoss,
+            key = "fury.cooldowns.burstOnBoss",
+            default = true,
+            tooltip = L.BurstOnBossTooltip,
+            onChange = function(self, checked)
+                cfg.burstOnBoss = checked
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. L.BurstOnBoss .. " " .. (checked and (isZhCN and "已启用" or "Enabled") or (isZhCN and "已禁用" or "Disabled")))
+            end
+        })
+        
         -- 鲁莽
+        :Header({ text = Aurora.texture(1719, 16) .. " " .. (isZhCN and "爆发技能开关" or "Burst Skills Toggle") })
         :Checkbox({
             text = Aurora.texture(1719, 14) .. " " .. L.UseRecklessness,
             key = "fury.cooldowns.recklessness",
@@ -2775,6 +2906,100 @@ if Aurora.Macro then
             end
         })
     
+    -- 宏命令标签页
+    gui:Tab(L.TabMacros)
+        :Header({ text = L.MacrosHeader })
+        :Button({
+            text = Aurora.texture(134939, 16) .. " " .. L.CreateMacrosButton,
+            width = 200,
+            height = 40,
+            tooltip = L.CreateMacrosTooltip,
+            onClick = function()
+                local isZhCN = GetLocale() == "zhCN" or GetLocale() == "zhTW"
+                local created = 0
+                local updated = 0
+                local failed = 0
+                
+                -- 定义要创建的宏
+                local macros = {
+                    {
+                        name = isZhCN and "循环开关" or "Toggle",
+                        icon = 132355, -- 战斗之剑
+                        body = "#showtooltip\n/aurora toggle"
+                    },
+                    {
+                        name = isZhCN and "爆发开关" or "Cooldown",
+                        icon = 236304, -- 化身图标
+                        body = "#showtooltip\n/aurora toggle cooldown"
+                    },
+                    {
+                        name = isZhCN and "打断开关" or "Interrupt",
+                        icon = 132938, -- 拳击
+                        body = "#showtooltip\n/aurora toggle interrupt"
+                    },
+                    {
+                        name = isZhCN and "强制爆发" or "Burst",
+                        icon = 132347, -- 鲁莽图标
+                        body = "#showtooltip\n/aurora toggle burst"
+                    }
+                }
+                
+                -- 创建或更新宏
+                -- 获取通用宏和角色专用宏的数量
+                local numAccountMacros, numCharMacros = GetNumMacros()
+                
+                for _, macro in ipairs(macros) do
+                    -- 先检查是否存在同名宏
+                    local macroIndex = GetMacroIndexByName(macro.name)
+                    
+                    -- 如果存在同名宏，先删除它
+                    if macroIndex > 0 then
+                        DeleteMacro(macroIndex)
+                        print("|cffff9900[" .. L.RoutineName .. "]|r " .. (isZhCN and "已删除旧宏: " or "Deleted old macro: ") .. macro.name)
+                    end
+                    
+                    -- 检查角色专用宏是否已满（最多18个）
+                    if numCharMacros >= 18 then
+                        print("|cffff0000[" .. L.RoutineName .. "]|r " .. (isZhCN and "角色专用宏已满（18/18），请删除一些旧宏后重试" or "Character macros full (18/18), please delete some old macros"))
+                        failed = failed + 1
+                    else
+                        -- 创建新的角色专用宏（第4个参数：nil/false=通用，true=角色专用）
+                        local newIndex = CreateMacro(macro.name, macro.icon, macro.body, true)
+                        if newIndex and newIndex > 0 then
+                            created = created + 1
+                            numCharMacros = numCharMacros + 1
+                        else
+                            failed = failed + 1
+                        end
+                    end
+                end
+                
+                -- 刷新宏界面（如果打开）
+                if MacroFrame and MacroFrame:IsShown() then
+                    MacroFrame_Update()
+                end
+                
+                -- 显示结果
+                local message = ""
+                if created > 0 then
+                    message = message .. (isZhCN and "创建: " or "Created: ") .. created .. " "
+                end
+                if updated > 0 then
+                    message = message .. (isZhCN and "更新: " or "Updated: ") .. updated .. " "
+                end
+                if failed > 0 then
+                    message = message .. (isZhCN and "失败: " or "Failed: ") .. failed .. " "
+                end
+                
+                if message ~= "" then
+                    print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "宏命令 - " or "Macros - ") .. message)
+                    if created > 0 then
+                        print("|cff00ff00[" .. L.RoutineName .. "]|r " .. (isZhCN and "宏已创建到角色专用宏，请打开宏界面查看" or "Macros created in character-specific tab"))
+                    end
+                end
+            end
+        })
+    
     -- 设置配置默认值
     Aurora.Config:SetDefault("fury.enragingRegeneration.enabled", true)
     Aurora.Config:SetDefault("fury.enragingRegeneration.threshold", 45)
@@ -2819,6 +3044,11 @@ if Aurora.Macro then
     Aurora.Config:SetDefault("fury.cooldowns.bladestorm", true)
     Aurora.Config:SetDefault("fury.cooldowns.bladestormTTD", 8)
     
+    -- 爆发模式控制
+    Aurora.Config:SetDefault("fury.cooldowns.burstOnBoss", true)  -- BOSS时爆发
+    Aurora.Config:SetDefault("fury.cooldowns.burstOnMobCount", true)  -- 达到数量时爆发
+    Aurora.Config:SetDefault("fury.cooldowns.burstMobCount", 3)  -- 怪物数量阈值
+    
     -- 从保存的配置加载值
     cfg.useEnragingRegeneration = Aurora.Config:Read("fury.enragingRegeneration.enabled")
     cfg.enragingRegenerationThreshold = Aurora.Config:Read("fury.enragingRegeneration.threshold")
@@ -2858,6 +3088,11 @@ if Aurora.Macro then
     cfg.avatarTTD = Aurora.Config:Read("fury.cooldowns.avatarTTD")
     cfg.useBladestorm = Aurora.Config:Read("fury.cooldowns.bladestorm")
     cfg.bladestormTTD = Aurora.Config:Read("fury.cooldowns.bladestormTTD")
+    
+    -- 爆发模式控制
+    cfg.burstOnBoss = Aurora.Config:Read("fury.cooldowns.burstOnBoss")
+    cfg.burstOnMobCount = Aurora.Config:Read("fury.cooldowns.burstOnMobCount")
+    cfg.burstMobCount = Aurora.Config:Read("fury.cooldowns.burstMobCount")
     
     -- print("|cff00ff00[TT狂战]|r GUI配置界面已加载")
     

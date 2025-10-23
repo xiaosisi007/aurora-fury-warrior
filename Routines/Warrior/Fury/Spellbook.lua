@@ -158,7 +158,9 @@ Aurora.SpellHandler.PopulateSpellbook({
         ViciousContempt = NewSpell(383885),    -- 恶意轻蔑
         Uproar = NewSpell(391572),             -- 喧哗
         Bloodborne = NewSpell(385703),         -- 血生
-        MeatCleaver = NewSpell(280392)         -- 血肉顺劈（天赋）
+        MeatCleaver = NewSpell(280392),        -- 血肉顺劈（天赋）
+        FreshMeat = NewSpell(215568),          -- 新鲜血肉（天赋）
+        ColdSteelHotBlood = NewSpell(383852)   -- 强化嗜血（天赋）
     },
     auras = {
         -- Buff
