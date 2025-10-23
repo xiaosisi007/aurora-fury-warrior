@@ -4435,9 +4435,9 @@ end
 -- 加载完成通知
 ------------------------------------------------------------------------
 
--- 延迟显示 Toast 通知，确保所有内容都加载完成
+-- 延迟显示更新通知，确保所有内容都加载完成
 C_Timer.After(2.5, function()
-    if Aurora and Aurora.Toast and Aurora.Config then
+    if Aurora and Aurora.Config then
         local lastSeenVersion = Aurora.Config:Read("fury.lastSeenVersion") or "0"
         local playerName = UnitName("player") or "战士"
         
@@ -4448,19 +4448,10 @@ C_Timer.After(2.5, function()
             
             -- 判断是首次使用还是更新
             if lastSeenVersion == "0" then
-                -- 首次使用
-                Aurora.Toast:Show(
-                    string.format("%s v%s", L.RoutineName, CURRENT_VERSION),
-                    string.format(L.ToastWelcome, playerName)
-                )
+                -- 首次使用 - 简单提示
+                print("|cff00ff00[" .. L.RoutineName .. "]|r " .. string.format(L.ToastWelcome, playerName))
             else
-                -- 版本更新 - 显示 Toast 提示
-                Aurora.Toast:Show(
-                    string.format((isZhCN and "%s已更新至 v%s" or "%s Updated to v%s"), L.RoutineName, CURRENT_VERSION),
-                    L.ToastUpdate .. (isZhCN and " | 输入 /aurora update 查看详情" or " | Type /aurora update for details")
-                )
-                
-                -- 同时在聊天窗口显示完整更新内容
+                -- 版本更新 - 直接在聊天窗口显示完整更新内容
                 C_Timer.After(1, function()
                     print(UPDATE_CONTENT)
                 end)
